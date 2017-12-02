@@ -2,8 +2,10 @@ package DM;
 
 import TM.ConstantValue;
 
+/**
+ * The SiteFactory is used to build sites and variables.
+ */
 public class SiteFactory {
-
   /**
    * Construct method for sites and variables. Put variables into sites accordingly.
    * @return an array of sites.
