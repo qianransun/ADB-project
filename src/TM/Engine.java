@@ -9,13 +9,19 @@ import java.util.List;
 
 public class Engine {
   private List<Instruction> instructionList = new ArrayList<>();
+  private List<Transaction> transactionList = new ArrayList<>();
 
   public static void main(String[] args) throws IOException {
     Engine taskManager = new Engine();
-    taskManager.readFile("C:\\Users\\ztian\\Downloads\\ADB-project\\sample\\test6.txt");
+    taskManager.initial("C:\\Users\\ztian\\Downloads\\ADB-project\\sample\\test1.txt");
   }
 
-  private void readFile(String inputFile) throws IOException{
+  private void initial(String inputFile) throws IOException {
+    readFile(inputFile, false);
+    parseInstructions(true);
+  }
+
+  private void readFile(String inputFile, boolean verbose) throws IOException{
     FileInputStream fis = new FileInputStream(inputFile);
     BufferedReader br = new BufferedReader(new InputStreamReader(fis));
     String line;
@@ -65,10 +71,33 @@ public class Engine {
       }
       instructionList.add(instruction);
     }
-    for (Instruction instruction : instructionList) {
-      System.out.println(instruction);
+    if (verbose) {
+      for (Instruction instruction : instructionList) {
+        System.out.println(instruction);
+      }
     }
     br.close();
+  }
+
+  private void parseInstructions(boolean verbose) {
+    for (Instruction instruction : instructionList) {
+      switch (instruction.type) {
+        case BEGIN:
+          transactionList.add(new Transaction(instruction.transactionIndex, false));
+          break;
+        case BEGINRO:
+          transactionList.add(new Transaction(instruction.transactionIndex, true));
+          break;
+        case END: case R: case W:
+          transactionList.get(instruction.transactionIndex - 1).instructionList.add(instruction);
+          break;
+      }
+    }
+    if (verbose) {
+      for (Transaction transaction : transactionList) {
+        System.out.println(transaction);
+      }
+    }
   }
 
   private void nextDigit(String line, int[] pos) {
@@ -90,6 +119,4 @@ public class Engine {
     }
     return index;
   }
-
-
 }
