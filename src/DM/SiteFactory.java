@@ -16,13 +16,14 @@ public class SiteFactory {
       sites[i] = new Site();
     }
     for (int i = 1; i <= ConstantValue.VariableNum; ++i) {
-      Variable var = new Variable(i);
       if (i % 2 == 0) {
         for (int j = 1; j <= ConstantValue.SiteNum; ++j) {
-          sites[j].variableList.add(var);
+          Variable var = new Variable(i);
+          sites[j].variables[i] = var;
         }
       } else {
-        sites[1 + i % 10].variableList.add(var);
+        Variable var = new Variable(i);
+        sites[1 + i % 10].variables[i] = var;
       }
     }
     return sites;
