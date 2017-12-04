@@ -1,5 +1,7 @@
 package TM;
 
+import DM.Lock;
+import DM.SiteEngine;
 import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -13,7 +15,23 @@ public class Engine {
 
   public static void main(String[] args) throws IOException {
     Engine taskManager = new Engine();
-    taskManager.initial("C:\\Users\\ztian\\Downloads\\ADB-project\\sample\\test1.txt");
+    taskManager.initial("C:\\Users\\ztian\\Downloads\\ADB-project\\sample\\test13.txt");
+    taskManager.run();
+  }
+
+  private void run() {
+    SiteEngine siteEngine = new SiteEngine();
+    for (Instruction instruction : instructionList) {
+      switch (instruction.type) {
+        case W:
+          if (siteEngine.getWriteLock(instruction.variableIndex, instruction.transactionIndex)) {
+            transactionList.get(instruction.transactionIndex - 1).
+                lockTable[instruction.variableIndex] = Lock.WRITE;
+
+          }
+          break;
+      }
+    }
   }
 
   private void initial(String inputFile) throws IOException {
