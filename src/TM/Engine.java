@@ -30,8 +30,44 @@ public class Engine {
 
           }
           break;
+        case R:
+          break;
+        case DUMP:
+          break;
+        case FAIL:
+          break;
+        case RECOVER:
+          break;
+        case END:
+          break;
       }
     }
+  }
+
+  /**
+   * Check if Ti can commit.
+   * @param index the index of the transaction
+   * @return true, if the transaction can be committed. Otherwise, return false.
+   */
+  private boolean canCommit(int index) {
+    return false;
+  }
+
+  /**
+   * Check if transactions are deadlocked.
+   * @return true, if there exists a cycle. Otherwise, false.
+   */
+  private boolean cycleDetect() {
+    return false;
+  }
+
+
+  /**
+   * Abort transactions according to fail site i.
+   * @param index the index of the site.
+   */
+  private void failSiteAbort(int index) {
+
   }
 
   private void initial(String inputFile) throws IOException {
