@@ -25,6 +25,25 @@ public class Transaction {
     status = TransactionStatus.RUN;
   }
 
+  public void setTransactionAborted() {
+    changeList.clear();
+    status = TransactionStatus.ABORTED;
+    waiting = null;
+  }
+
+  public void removeWaiting() {
+    switch (waiting.type) {
+      case W:
+        lockTable[waiting.variableIndex] = Lock.WRITE;
+        changeList.put(waiting.variableIndex, waiting.value);
+        waiting = null;
+        break;
+      case R:
+        lockTable[waiting.variableIndex] = Lock.READ;
+        waiting = null;
+    }
+  }
+
   @Override
   public String toString() {
     StringBuilder builder = new StringBuilder();
