@@ -6,11 +6,11 @@ import java.util.List;
 
 public class Site {
   Variable[] variables;
-    Status status;
+    SiteStatus status;
 
   Site() {
     variables = new Variable[ConstantValue.VariableNum + 1];
-    status = status.UP
+    status = status.UP;
   }
 
   @Override

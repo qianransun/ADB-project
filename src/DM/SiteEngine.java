@@ -116,14 +116,9 @@ public class SiteEngine {
    * Print out the commited values of all copies of all variables.
    */
   public void dump() {
-    for (int i = 1; i <=sites.length; i++) {
-      if (sites[i].status == status.UP) {
-        for (int j = 1; j < sites[i].variables.length; j++) {
-          if (sites[i].variables[j] != null && sites[i].variable[j].lock == lock.NONE) {
-                    System.out.println("Site: " + i + " Variable: " + j + " Value: " + j.value)
-          }
-        }
-      }
+    for (int i = 1; i < ConstantValue.SiteNum; i++) {
+      System.out.println("Site " + i);
+      System.out.println(sites[i]);
     }
   }
 
@@ -132,13 +127,8 @@ public class SiteEngine {
    * @param index the index of the site
    */
   public void dumpSite(int index) {
-    if (sites[index].status == status.UP) {
-      for (int i = 1; i <= sites[index].variables.length; i++) {
-        if (sites[index].variables[i] != null && sites[index].variable[i].lock == lock.NONE) {
-          System.out.println("Site: " + index + " Variable: " + i + " Value: " + i.value)
-        }
-      }
-    }
+    System.out.println("Site " + index);
+    System.out.println(sites[index]);
   }
 
   /**
@@ -146,16 +136,14 @@ public class SiteEngine {
    * @param index the index of the variable
    */
   public void dumpVar(int index) {
-    if (index.lock == lock.NONE) {
-      for (int i = 1; i <= sites.length; i++) {
-        if (sites(i).status == status.UP) {
-          for (int j = 1; j <= sites[i].variables.length; j++) {
-            if (sites[i].variables[j] == index) {
-              System.out.println("Site: " + i + " Variable: " + index + " Value: " + index.value)
-            }
-          }
-        }
+    if (index % 2 == 0) {
+      for (int i = 1; i <= ConstantValue.SiteNum; i++) {
+        System.out.println("Site " + i);
+        System.out.println(sites[i]);
       }
+    } else {
+      System.out.println("Site " + 1 + index % 10);
+      System.out.println(sites[1 + index % 10]);
     }
   }
 
@@ -164,7 +152,7 @@ public class SiteEngine {
    * @param index the index of the site.
    */
   public void setSiteFail(int index) {
-    sites[index].status = status.FAIL;
+    sites[index].status = SiteStatus.FAIL;
   }
 
   /**
@@ -173,7 +161,7 @@ public class SiteEngine {
    * @param index the index of the site.
    */
   public void setSiteRecover(int index) {
-    site[index].status = status.RECOVER;
+    sites[index].status = SiteStatus.RECOVER;
   }
 
   /**
