@@ -10,7 +10,7 @@ public class Site {
 
   Site() {
     variables = new Variable[ConstantValue.VariableNum + 1];
-    status = status.UP;
+    status = SiteStatus.UP;
   }
 
   @Override
