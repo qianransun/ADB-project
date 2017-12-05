@@ -6,10 +6,8 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Queue;
 
 public class Engine {
   private List<Instruction> instructionList = new ArrayList<>();
@@ -76,10 +74,15 @@ public class Engine {
     }
   }
 
-  private void releaseLocks(int index) {
+  private void releaseLocks(int transactionIndex) {
     for (int i = 1; i <= ConstantValue.VariableNum; ++i) {
-      if (transactionList.get(index - 1).lockTable[i] != null) {
-        siteEngine.releaseLock(i);
+
+      if (transactionList.get(transactionIndex - 1).lockTable[i] != null) {
+        List<Instruction> acquiredLocks = siteEngine.releaseLock(i, transactionIndex);
+        for (Instruction instruction : acquiredLocks) {
+          transactionList.get(instruction.transactionIndex - 1).removeWaiting();
+        }
+        transactionList.get(transactionIndex - 1).lockTable[i] = null;
       }
     }
   }
@@ -104,8 +107,29 @@ public class Engine {
     List<Integer> cycle = new ArrayList<>();
     boolean[] onStack = new boolean[transactionList.size() + 1];
     DFS(marked, edgeTo, onStack, transactionIndex, cycle);
-    return cycle.size() == 0;
+    if (cycle.size() != 0) {
+      abortTransaction(getYoungestTransaction(cycle));
+      return true;
+    }
+    return false;
   }
+
+  private int getYoungestTransaction(List<Integer> cycle) {
+    int max = cycle.get(0);
+    for (int i = 1; i < cycle.size(); ++i) {
+      if (max < cycle.get(i)) {
+        max = cycle.get(i);
+      }
+    }
+    return max;
+  }
+
+  private void abortTransaction(int transactionIndex) {
+    siteEngine.removeWaiting(transactionList.get(transactionIndex - 1).waiting);
+    releaseLocks(transactionIndex);
+    transactionList.get(transactionIndex - 1).setTransactionAborted();
+  }
+
 
   /**
    * Use DFS to traverse the graph and detect the cycle. Transactions in the cycle is stored in the
