@@ -14,7 +14,11 @@ public class SiteFactory {
     Site[] sites = new Site[ConstantValue.SiteNum + 1];
     for (int i = 1; i <= ConstantValue.SiteNum; ++i) {
       sites[i] = new Site();
+      sites[i].UP = true;
+      sites[i].FAIL = false;
+      sites[i].RECORVER = false;
     }
+
     for (int i = 1; i <= ConstantValue.VariableNum; ++i) {
       if (i % 2 == 0) {
         for (int j = 1; j <= ConstantValue.SiteNum; ++j) {

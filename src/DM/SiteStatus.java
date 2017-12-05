@@ -1,7 +1,7 @@
 package DM;
 
 public enum SiteStatus {
+  UP,
   FAIL,
-  RECOVER,
-  UP
+  RECORVER,
 }
