@@ -4,12 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Instruction {
-  InstructionType type;
-  int variableIndex;
-  int transactionIndex;
+  public InstructionType type;
+  public int variableIndex;
+  public int transactionIndex;
   // Used as site index in dump(value) and target value in W(T2, x1, value);
-  int value;
-  List<Integer> result;
+  public int value;
+  public List<Integer> result;
 
   Instruction() {
     type = InstructionType.DEFAULT;
