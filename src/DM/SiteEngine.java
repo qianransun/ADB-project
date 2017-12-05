@@ -31,7 +31,10 @@ public class SiteEngine {
     } else {
       boolean lock = true;
       for (int i = 1; i <= ConstantValue.SiteNum; ++i) {
-        lock &= getWriteLockHelper(instruction, i);
+        if (!getWriteLockHelper(instruction, i)) {
+          lock = false;
+          break;
+        }
       }
       if (lock) {
         setWriteLock(instruction);
@@ -129,9 +132,10 @@ public class SiteEngine {
   }
 
   /**
-   * Release all locks on variable xi obtained by transaction Ti.
+   * Release all locks of variable xi held by transaction Ti
    * @param variableIndex the index of the variable
    * @param transactionIndex the index of the transaction
+   * @return list of instructions that have acquired locks due to the release of locks.
    */
   public List<Instruction> releaseLock(int variableIndex, int transactionIndex) {
     if (variableIndex % 2 != 0) {
@@ -167,22 +171,49 @@ public class SiteEngine {
    */
   private List<Instruction> dequeWaitList(int variableIndex) {
     List<Instruction> acquiredLocks = new ArrayList<>();
-    int siteIndex = 1;
-
-    return acquiredLocks;
-  }
-  private void dequeWaitListHelper(int variableIndex, int siteIndex,
-      List<Instruction> acquiredLocks) {
-    for (Instruction instruction : sites[siteIndex].variables[variableIndex].waitList) {
-      switch (instruction.type) {
-        case W:
-          if (getWriteLock(instruction)) {
-            acquiredLocks.add(instruction);
-            return;
-          }
-          break;
+    if (variableIndex % 2 != 0) {
+      int siteIndex = 1 + (variableIndex % 10);
+      boolean flag = true;
+      while (flag && !sites[siteIndex].variables[variableIndex].waitList.isEmpty()) {
+        Instruction instruction = sites[siteIndex].variables[variableIndex].waitList.peek();
+        switch (instruction.type) {
+          case W:
+            if (getWriteLockHelper(instruction, siteIndex)) {
+              acquiredLocks.add(sites[siteIndex].variables[variableIndex].waitList.poll());
+            }
+            flag = false;
+            break;
+          case R:
+            break;
+        }
+      }
+    } else {
+      boolean flag = true;
+      while (flag && !sites[1].variables[variableIndex].waitList.isEmpty()) {
+        Instruction instruction = sites[1].variables[variableIndex].waitList.peek();
+        switch (instruction.type) {
+          case W:
+            boolean lock = true;
+            for (int i = 1; i <= ConstantValue.SiteNum; ++i) {
+              if (!getWriteLockHelper(instruction, i)) {
+                lock = false;
+                break;
+              }
+            }
+            if (lock) {
+              acquiredLocks.add(sites[1].variables[variableIndex].waitList.poll());
+              for (int i = 2; i <= ConstantValue.SiteNum; ++i) {
+                sites[i].variables[variableIndex].waitList.poll();
+              }
+            }
+            flag = false;
+            break;
+          case R:
+            break;
+        }
       }
     }
+    return acquiredLocks;
   }
 
   public void removeWaiting(Instruction instruction) {
@@ -202,5 +233,16 @@ public class SiteEngine {
   public List<Integer> getLockTable(int variableIndex) {
     int siteIndex = variableIndex % 2 != 0 ? 1 + (variableIndex % 10) : 1;
     return sites[siteIndex].variables[variableIndex].lockTable;
+  }
+
+  public void writeVariable(int variableIndex, int value) {
+    if (variableIndex % 2 != 0) {
+      int siteIndex = 1 + (variableIndex % 10);
+      sites[siteIndex].variables[variableIndex].value = value;
+    } else {
+      for (int i = 1; i <= ConstantValue.SiteNum; ++i) {
+        sites[i].variables[variableIndex].value = value;
+      }
+    }
   }
 }

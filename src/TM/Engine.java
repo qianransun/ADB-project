@@ -8,37 +8,23 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 public class Engine {
   private List<Instruction> instructionList = new ArrayList<>();
   private List<Transaction> transactionList = new ArrayList<>();
   private SiteEngine siteEngine = new SiteEngine();
+  private boolean verbose = false;
 
   public static void main(String[] args) throws IOException {
     Engine taskManager = new Engine();
     taskManager.initial("C:\\Users\\ztian\\Downloads\\ADB-project\\sample\\test1.txt");
     taskManager.run();
-    taskManager.printOut();
-  }
-
-  private void printOut() {
-    for (Instruction instruction : instructionList) {
-      switch (instruction.type) {
-        case R:
-          System.out.println("x" + instruction.variableIndex + "'s value is"+ instruction.value);
-          break;
-        case END:
-          if (instruction.value == 1) {
-            System.out.println("T" + instruction.transactionIndex + " can commit.");
-          } else {
-            System.out.println("T" + instruction.transactionIndex + " cannot commit.");
-          }
-      }
-    }
   }
 
   private void run() {
     for (Instruction instruction : instructionList) {
+      System.out.println(instruction);
       switch (instruction.type) {
         case W:
           if (siteEngine.getWriteLock(instruction)) {
@@ -48,9 +34,7 @@ public class Engine {
                 put(instruction.variableIndex, instruction.value);
           } else {
             transactionList.get(instruction.transactionIndex - 1).waiting = instruction;
-            if (cycleDetect(instruction.transactionIndex)) {
-              System.out.println("Cycle!" + instruction);
-            }
+            cycleDetect(instruction.transactionIndex);
           }
           break;
         case R:
@@ -64,19 +48,26 @@ public class Engine {
         case END:
           if (transactionList.get(instruction.transactionIndex - 1).waiting == null) {
             // 1 represents can commit in this case.
-            instruction.result.add(1);
+            System.out.println("T" + instruction.transactionIndex + " can commit.");
             releaseLocks(instruction.transactionIndex);
+            writeVariables(transactionList.get(instruction.transactionIndex - 1));
           } else {
-            instruction.result.add(0);
+            System.out.println("T" + instruction.transactionIndex + "cannot commite.");
+            instruction.value = 0;
           }
           break;
       }
     }
   }
 
+  private void writeVariables(Transaction transaction) {
+    for (Map.Entry<Integer, Integer> entry : transaction.changeList.entrySet()) {
+      siteEngine.writeVariable(entry.getKey(), entry.getValue());
+    }
+  }
+
   private void releaseLocks(int transactionIndex) {
     for (int i = 1; i <= ConstantValue.VariableNum; ++i) {
-
       if (transactionList.get(transactionIndex - 1).lockTable[i] != null) {
         List<Instruction> acquiredLocks = siteEngine.releaseLock(i, transactionIndex);
         for (Instruction instruction : acquiredLocks) {
@@ -98,10 +89,10 @@ public class Engine {
   }
 
   /**
-   * Check if transactions are deadlocked.
-   * @return true, if there exists a cycle. Otherwise, false.
+   * Check if transactions are deadlocked. If there exists a cycle, kill the youngest transaction
+   * in the cycle, release its resources and try to allocate its variables to other instructions.
    */
-  private boolean cycleDetect(int transactionIndex) {
+  private void cycleDetect(int transactionIndex) {
     boolean[] marked = new boolean[transactionList.size() + 1];
     int[] edgeTo = new int[transactionList.size() + 1];
     List<Integer> cycle = new ArrayList<>();
@@ -109,9 +100,7 @@ public class Engine {
     DFS(marked, edgeTo, onStack, transactionIndex, cycle);
     if (cycle.size() != 0) {
       abortTransaction(getYoungestTransaction(cycle));
-      return true;
     }
-    return false;
   }
 
   private int getYoungestTransaction(List<Integer> cycle) {
@@ -125,6 +114,8 @@ public class Engine {
   }
 
   private void abortTransaction(int transactionIndex) {
+    System.out.println("There exists a cycle in which T" + transactionIndex + " is the youngest. "
+        + "Abort.");
     siteEngine.removeWaiting(transactionList.get(transactionIndex - 1).waiting);
     releaseLocks(transactionIndex);
     transactionList.get(transactionIndex - 1).setTransactionAborted();
@@ -174,11 +165,11 @@ public class Engine {
   }
 
   private void initial(String inputFile) throws IOException {
-    readFile(inputFile, false);
-    parseInstructions(true);
+    readFile(inputFile);
+    parseInstructions();
   }
 
-  private void readFile(String inputFile, boolean verbose) throws IOException{
+  private void readFile(String inputFile) throws IOException{
     FileInputStream fis = new FileInputStream(inputFile);
     BufferedReader br = new BufferedReader(new InputStreamReader(fis));
     String line;
@@ -236,7 +227,7 @@ public class Engine {
     br.close();
   }
 
-  private void parseInstructions(boolean verbose) {
+  private void parseInstructions() {
     for (Instruction instruction : instructionList) {
       switch (instruction.type) {
         case BEGIN:
