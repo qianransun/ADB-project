@@ -116,15 +116,15 @@ public class SiteEngine {
    * Print out the commited values of all copies of all variables.
    */
   public void dump() {
-
-  }
-
-  /**
-   * Print the committed values of all copies of variables xi at all sites.
-   * @param index the index of the variable
-   */
-  public void dumpVar(int index) {
-
+    for (int i = 1; i <=sites.length; i++) {
+      if (sites[i].status == status.UP) {
+        for (int j = 1; j < sites[i].variables.length; j++) {
+          if (sites[i].variables[j] != null && sites[i].variable[j].lock == lock.NONE) {
+                    System.out.println("Site: " + i + " Variable: " + j + " Value: " + j.value)
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -132,7 +132,31 @@ public class SiteEngine {
    * @param index the index of the site
    */
   public void dumpSite(int index) {
+    if (sites[index].status == status.UP) {
+      for (int i = 1; i <= sites[index].variables.length; i++) {
+        if (sites[index].variables[i] != null && sites[index].variable[i].lock == lock.NONE) {
+          System.out.println("Site: " + index + " Variable: " + i + " Value: " + i.value)
+        }
+      }
+    }
+  }
 
+  /**
+   * Print the committed values of all copies of variables xi at all sites.
+   * @param index the index of the variable
+   */
+  public void dumpVar(int index) {
+    if (index.lock == lock.NONE) {
+      for (int i = 1; i <= sites.length; i++) {
+        if (sites(i).status == status.UP) {
+          for (int j = 1; j <= sites[i].variables.length; j++) {
+            if (sites[i].variables[j] == index) {
+              System.out.println("Site: " + i + " Variable: " + index + " Value: " + index.value)
+            }
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -140,7 +164,7 @@ public class SiteEngine {
    * @param index the index of the site.
    */
   public void setSiteFail(int index) {
-
+    sites[index].status = status.FAIL;
   }
 
   /**
@@ -149,7 +173,7 @@ public class SiteEngine {
    * @param index the index of the site.
    */
   public void setSiteRecover(int index) {
-
+    site[index].status = status.RECOVER;
   }
 
   /**
