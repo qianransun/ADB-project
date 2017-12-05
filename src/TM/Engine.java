@@ -6,28 +6,53 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 
 public class Engine {
   private List<Instruction> instructionList = new ArrayList<>();
   private List<Transaction> transactionList = new ArrayList<>();
+  private SiteEngine siteEngine = new SiteEngine();
 
   public static void main(String[] args) throws IOException {
     Engine taskManager = new Engine();
-    taskManager.initial("C:\\Users\\ztian\\Downloads\\ADB-project\\sample\\test13.txt");
+    taskManager.initial("C:\\Users\\ztian\\Downloads\\ADB-project\\sample\\test1.txt");
     taskManager.run();
+    taskManager.printOut();
+  }
+
+  private void printOut() {
+    for (Instruction instruction : instructionList) {
+      switch (instruction.type) {
+        case R:
+          System.out.println("x" + instruction.variableIndex + "'s value is"+ instruction.value);
+          break;
+        case END:
+          if (instruction.value == 1) {
+            System.out.println("T" + instruction.transactionIndex + " can commit.");
+          } else {
+            System.out.println("T" + instruction.transactionIndex + " cannot commit.");
+          }
+      }
+    }
   }
 
   private void run() {
-    SiteEngine siteEngine = new SiteEngine();
     for (Instruction instruction : instructionList) {
       switch (instruction.type) {
         case W:
-          if (siteEngine.getWriteLock(instruction.variableIndex, instruction.transactionIndex)) {
+          if (siteEngine.getWriteLock(instruction)) {
             transactionList.get(instruction.transactionIndex - 1).
                 lockTable[instruction.variableIndex] = Lock.WRITE;
-
+            transactionList.get(instruction.transactionIndex - 1).changeList.
+                put(instruction.variableIndex, instruction.value);
+          } else {
+            transactionList.get(instruction.transactionIndex - 1).waiting = instruction;
+            if (cycleDetect(instruction.transactionIndex)) {
+              System.out.println("Cycle!" + instruction);
+            }
           }
           break;
         case R:
@@ -39,10 +64,26 @@ public class Engine {
         case RECOVER:
           break;
         case END:
+          if (transactionList.get(instruction.transactionIndex - 1).waiting == null) {
+            // 1 represents can commit in this case.
+            instruction.result.add(1);
+            releaseLocks(instruction.transactionIndex);
+          } else {
+            instruction.result.add(0);
+          }
           break;
       }
     }
   }
+
+  private void releaseLocks(int index) {
+    for (int i = 1; i <= ConstantValue.VariableNum; ++i) {
+      if (transactionList.get(index - 1).lockTable[i] != null) {
+        siteEngine.releaseLock(i);
+      }
+    }
+  }
+
 
   /**
    * Check if Ti can commit.
@@ -57,8 +98,46 @@ public class Engine {
    * Check if transactions are deadlocked.
    * @return true, if there exists a cycle. Otherwise, false.
    */
-  private boolean cycleDetect() {
-    return false;
+  private boolean cycleDetect(int transactionIndex) {
+    boolean[] marked = new boolean[transactionList.size() + 1];
+    int[] edgeTo = new int[transactionList.size() + 1];
+    List<Integer> cycle = new ArrayList<>();
+    boolean[] onStack = new boolean[transactionList.size() + 1];
+    DFS(marked, edgeTo, onStack, transactionIndex, cycle);
+    return cycle.size() == 0;
+  }
+
+  /**
+   * Use DFS to traverse the graph and detect the cycle. Transactions in the cycle is stored in the
+   * list named cycle.
+   * @param marked whether the transaction has been visited.
+   * @param edgeTo record the father node of the transaction
+   * @param onStack whether the transaction is in the cycle
+   * @param transactionIndex the index of the transaction
+   * @param cycle used to store the cycle of transactions
+   */
+  private void DFS(boolean[] marked, int[] edgeTo, boolean[] onStack, int transactionIndex,
+      List<Integer> cycle) {
+    onStack[transactionIndex] = true;
+    marked[transactionIndex] = true;
+    List<Integer> lockTable = transactionList.get(transactionIndex - 1).
+        waiting == null ? new ArrayList<>() : siteEngine.getLockTable(transactionList.
+        get(transactionIndex - 1).waiting.variableIndex);
+    for (Integer index : lockTable) {
+      if (cycle.size() != 0) {
+        return;
+      }
+      if (!marked[index]) {
+        edgeTo[index] = transactionIndex;
+        DFS(marked, edgeTo, onStack, index, cycle);
+      } else if (onStack[index]){
+        for (int edge = transactionIndex; edge != index; edge = edgeTo[edge]) {
+          cycle.add(edge);
+        }
+        cycle.add(index);
+      }
+    }
+    onStack[transactionIndex] = false;
   }
 
 
