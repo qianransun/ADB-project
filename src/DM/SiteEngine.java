@@ -14,7 +14,7 @@ public class SiteEngine {
 
   /**
    * Try to get required write locks. If can, locks are set. Otherwise, the instruction is put into
-   * waitlist.
+   * wait list.
    * @param instruction the instruction to be executed.
    * @return true, if locks can be set. Otherwise, false.
    */
@@ -52,14 +52,12 @@ public class SiteEngine {
   }
 
   private boolean getWriteLockHelper(Instruction instruction, int siteIndex) {
-    switch (sites[siteIndex].variables[instruction.variableIndex].lock) {
+    Variable var = sites[siteIndex].variables[instruction.variableIndex];
+    switch (var.lock) {
       case WRITE:
-        return sites[siteIndex].variables[instruction.variableIndex].lockTable.get(0) ==
-            instruction.transactionIndex;
+        return var.lockTable.get(0) == instruction.transactionIndex;
       case READ:
-        return sites[siteIndex].variables[instruction.variableIndex].lockTable.size() != 1 ||
-            sites[siteIndex].variables[instruction.variableIndex].lockTable.get(0) !=
-                instruction.transactionIndex;
+        return var.lockTable.size() == 1 && var.lockTable.get(0) == instruction.transactionIndex;
       default:
         return true;
     }
@@ -82,13 +80,36 @@ public class SiteEngine {
   }
 
   /**
-   * Try to get required write locks. If can, locks are set. Otherwise, the operation is rejected.
-   * @param variableIndex the index of the variable
-   * @param transactionIndex the index of the transaction
+   * Try to get required read locks. If can, locks are set. Otherwise, the instruction is put into
+   * wait list.
+   * @param instruction the instruction to be executed.
    * @return true, if locks can be set. Otherwise, false.
    */
-  public boolean getReadLock(int variableIndex, int transactionIndex) {
-    return false;
+  public boolean getReadLock(Instruction instruction) {
+    int siteIndex = instruction.variableIndex % 2 != 0 ? 1 + (instruction.variableIndex % 10) : 1;
+    Variable var = sites[siteIndex].variables[instruction.variableIndex];
+    switch (var.lock) {
+      case READ:
+        if (!var.waitList.isEmpty()) {
+          var.waitList.add(instruction);
+          return false;
+        }
+        setReadLock(instruction);
+        return true;
+      case NONE:
+        setReadLock(instruction);
+        return true;
+      default:
+        var.waitList.add(instruction);
+        return false;
+    }
+  }
+
+  private void setReadLock(Instruction instruction) {
+    int siteIndex = instruction.variableIndex % 2 != 0 ? 1 + (instruction.variableIndex % 10) : 1;
+    Variable var = sites[siteIndex].variables[instruction.variableIndex];
+    var.lock = Lock.READ;
+    var.lockTable.add(instruction.transactionIndex);
   }
 
   /**
@@ -184,6 +205,7 @@ public class SiteEngine {
             flag = false;
             break;
           case R:
+            dequeReadInstruction(instruction, acquiredLocks);
             break;
         }
       }
@@ -209,11 +231,24 @@ public class SiteEngine {
             flag = false;
             break;
           case R:
+            dequeReadInstruction(instruction, acquiredLocks);
             break;
         }
       }
     }
     return acquiredLocks;
+  }
+
+  private boolean dequeReadInstruction(Instruction instruction, List<Instruction> acquiredLocks) {
+    int siteIndex = instruction.variableIndex % 2 != 0 ? 1 + (instruction.variableIndex % 10) : 1;
+    Variable var = sites[siteIndex].variables[instruction.variableIndex];
+    if (var.lock == Lock.NONE || var.lock == Lock.READ) {
+      setReadLock(instruction);
+      acquiredLocks.add(sites[siteIndex].variables[instruction.variableIndex].waitList.poll());
+      return true;
+    } else {
+      return false;
+    }
   }
 
   public void removeWaiting(Instruction instruction) {
@@ -244,5 +279,10 @@ public class SiteEngine {
         sites[i].variables[variableIndex].value = value;
       }
     }
+  }
+
+  public int getVariableValue(int variableIndex) {
+    int siteIndex = variableIndex % 2 != 0 ? 1 + (variableIndex % 10) : 1;
+    return sites[siteIndex].variables[variableIndex].value;
   }
 }

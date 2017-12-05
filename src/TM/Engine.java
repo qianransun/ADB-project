@@ -18,26 +18,45 @@ public class Engine {
 
   public static void main(String[] args) throws IOException {
     Engine taskManager = new Engine();
-    taskManager.initial("C:\\Users\\ztian\\Downloads\\ADB-project\\sample\\test1.txt");
+    taskManager.initial("C:\\Users\\ztian\\Downloads\\ADB-project\\sample\\test11.txt");
     taskManager.run();
+    taskManager.printOut();
+  }
+
+  private void printOut() {
+    for (Instruction instruction : instructionList) {
+      System.out.println(instruction);
+      switch (instruction.type) {
+        case R:
+          System.out.println("x" + instruction.variableIndex + "'s value is " + instruction.value);
+          break;
+      }
+    }
   }
 
   private void run() {
     for (Instruction instruction : instructionList) {
-      System.out.println(instruction);
+      Transaction transaction;
       switch (instruction.type) {
         case W:
+          transaction = transactionList.get(instruction.transactionIndex - 1);
           if (siteEngine.getWriteLock(instruction)) {
-            transactionList.get(instruction.transactionIndex - 1).
-                lockTable[instruction.variableIndex] = Lock.WRITE;
-            transactionList.get(instruction.transactionIndex - 1).changeList.
-                put(instruction.variableIndex, instruction.value);
+            transaction.lockTable[instruction.variableIndex] = Lock.WRITE;
+            transaction.changeList.put(instruction.variableIndex, instruction.value);
           } else {
-            transactionList.get(instruction.transactionIndex - 1).waiting = instruction;
+            transaction.waiting = instruction;
             cycleDetect(instruction.transactionIndex);
           }
           break;
         case R:
+          transaction = transactionList.get(instruction.transactionIndex - 1);
+          if (siteEngine.getReadLock(instruction)) {
+            transaction.lockTable[instruction.variableIndex] = Lock.READ;
+            setVariableValue(instruction);
+          } else {
+            transaction.waiting = instruction;
+            cycleDetect(instruction.transactionIndex);
+          }
           break;
         case DUMP:
           break;
@@ -49,14 +68,24 @@ public class Engine {
           if (transactionList.get(instruction.transactionIndex - 1).waiting == null) {
             // 1 represents can commit in this case.
             System.out.println("T" + instruction.transactionIndex + " can commit.");
-            releaseLocks(instruction.transactionIndex);
             writeVariables(transactionList.get(instruction.transactionIndex - 1));
+            releaseLocks(instruction.transactionIndex);
           } else {
-            System.out.println("T" + instruction.transactionIndex + "cannot commite.");
+            System.out.println("T" + instruction.transactionIndex + " cannot commit.");
             instruction.value = 0;
           }
           break;
       }
+    }
+  }
+
+  private void setVariableValue(Instruction instruction) {
+    Integer value = transactionList.get(instruction.transactionIndex - 1).changeList.
+        get(instruction.variableIndex);
+    if (value == null) {
+      instruction.value = siteEngine.getVariableValue(instruction.variableIndex);
+    } else {
+      instruction.value = value;
     }
   }
 
@@ -68,12 +97,16 @@ public class Engine {
 
   private void releaseLocks(int transactionIndex) {
     for (int i = 1; i <= ConstantValue.VariableNum; ++i) {
-      if (transactionList.get(transactionIndex - 1).lockTable[i] != null) {
+      Transaction transaction = transactionList.get(transactionIndex - 1);
+      if (transaction.lockTable[i] != null) {
         List<Instruction> acquiredLocks = siteEngine.releaseLock(i, transactionIndex);
         for (Instruction instruction : acquiredLocks) {
+          if (instruction.type == InstructionType.R) {
+            setVariableValue(instruction);
+          }
           transactionList.get(instruction.transactionIndex - 1).removeWaiting();
         }
-        transactionList.get(transactionIndex - 1).lockTable[i] = null;
+        transaction.lockTable[i] = null;
       }
     }
   }
@@ -145,7 +178,7 @@ public class Engine {
       if (!marked[index]) {
         edgeTo[index] = transactionIndex;
         DFS(marked, edgeTo, onStack, index, cycle);
-      } else if (onStack[index]){
+      } else if (onStack[index] && transactionIndex != index){
         for (int edge = transactionIndex; edge != index; edge = edgeTo[edge]) {
           cycle.add(edge);
         }

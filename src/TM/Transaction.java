@@ -38,6 +38,9 @@ public class Transaction {
         changeList.put(waiting.variableIndex, waiting.value);
         waiting = null;
         break;
+      case R:
+        lockTable[waiting.variableIndex] = Lock.READ;
+        waiting = null;
     }
   }
 
