@@ -116,7 +116,7 @@ public class SiteEngine {
    * Print out the commited values of all copies of all variables.
    */
   public void dump() {
-    for (int i = 1; i < ConstantValue.SiteNum; i++) {
+    for (int i = 1; i <= ConstantValue.SiteNum; i++) {
       System.out.println("Site " + i);
       System.out.println(sites[i]);
     }
