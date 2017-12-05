@@ -6,9 +6,11 @@ import java.util.List;
 
 public class Site {
   Variable[] variables;
+    SiteStatus status;
 
   Site() {
     variables = new Variable[ConstantValue.VariableNum + 1];
+    status = SiteStatus.UP;
   }
 
   @Override
@@ -22,5 +24,4 @@ public class Site {
     }
     return builder.toString();
   }
-
 }

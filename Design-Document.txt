@@ -1,0 +1,167 @@
+Design Document
+
+Tian Zhao N15974307, Qianran Sun N13240100
+
+
+We have two packages in all.
+
+(I) Package DM have 6 classes in all:
+
+1. Lock.java
+The class has 3 fields for lock status: READ, WRITE, NONE
+
+2. Site.java
+For each site, it has an array to save the variables a site has.
+Also, it contains the site status.
+
+3. SiteStatus.java
+Has three fields to show the site status: FAIL, RECOVER, UP
+
+4. SiteEngine.java
+Manage all sites and those variables on each site.
+There are 8 functions inside.
+1) getWriteLock()
+
+2) setWriteLock()
+
+3) getReadLock()
+
+4) dump()
+Gives the committed values of all copies of all variables at all sites, sorted per site.
+
+5) dumpsite()
+Gives the committed values of all copies of all variables at site i.
+
+6) dumpVar()
+Gives the committed values of all copies of variable xj at all
+sites.
+
+7) setSiteFail()
+
+8) setSiteRecover()
+
+5. SiteFactory.java
+Has a function: constructSites() which used to create all sites.
+
+6. Variable.java
+Has 5 fields to show the variable information.
+index, value, lock, lockTable, waitList
+
+
+(II) Package TM have 5 classes in all:
+
+1. ConstantValue.java
+Contains two constant value siteNumber 10 and variableNumber 20.
+
+2. Engine.java
+Manage all transactions and has 10 functions
+1) main()
+
+2) run()
+
+3) canCommit()
+
+4) cycleDetection()
+
+5) failSiteAbort()
+
+6) readFile()
+
+7) parseInstructions()
+
+8) nextDigit()
+
+9) isDigit()
+
+10) parseIndex()
+
+3. Instruction.java
+Show instructions per line which contains four fields.
+variableIndex, transactionIndex, value, result
+
+4. InstructionType.java
+Has 9 fields to show a transaction’s type.
+BEGIN, BEGINRO, FAIL, RECOVER, DUMP, END, R, W, DEFEAULT
+
+5. Transaction.java
+Has four fields toward for the type and lock of a transaction.
+list of instructions, index, isRO, lockTable
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+1. Engine (TM)
+Fields:
+
+Functions:
+run(): including the run of each operations, and do all operations of RO firstly.
+dump():
+detectCycle(): 
+
+
+2. Transactions 
+There are two subclasses including Read-Only and Read-Write transactions.
+Fields:
+index, type(Read-Only or not), operations, status, locks
+
+Functions:
+
+
+2. Operations
+Fields:
+a list of operaitons, type(begin() beginRO,R,W,dump(),end(),fail(),recover()) 
+
+
+3. Resource
+Fields:
+index, sites, wait list of transactions,
+
+
+4. Site (DM)
+Fields: 
+index, resource, status
+
+Functions:
+recover(): Recover Site and Change the value of the resource in the site, we change the value of the new write till the commit moment, and save the new value to a temp.
+dump(i):
+
+
+5. ReadFile
+read and pass each operations in the file
+
+
+6. Main
+    execute each function by sequence.
+

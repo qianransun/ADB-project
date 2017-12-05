@@ -69,6 +69,13 @@ public class Engine {
           }
           break;
         case DUMP:
+          if (instruction.variableIndex != 0) {
+            siteEngine.dumpVar(instruction.variableIndex);
+          } else if (instruction.value != 0) {
+            siteEngine.dumpSite(instruction.value);
+          } else {
+            siteEngine.dump();
+          }
           break;
         case FAIL:
           break;
@@ -120,16 +127,6 @@ public class Engine {
         transaction.lockTable[i] = null;
       }
     }
-  }
-
-
-  /**
-   * Check if Ti can commit.
-   * @param index the index of the transaction
-   * @return true, if the transaction can be committed. Otherwise, return false.
-   */
-  private boolean canCommit(int index) {
-    return false;
   }
 
   /**

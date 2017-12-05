@@ -116,15 +116,10 @@ public class SiteEngine {
    * Print out the commited values of all copies of all variables.
    */
   public void dump() {
-
-  }
-
-  /**
-   * Print the committed values of all copies of variables xi at all sites.
-   * @param index the index of the variable
-   */
-  public void dumpVar(int index) {
-
+    for (int i = 1; i <= ConstantValue.SiteNum; i++) {
+      System.out.println("Site " + i);
+      System.out.println(sites[i]);
+    }
   }
 
   /**
@@ -132,7 +127,24 @@ public class SiteEngine {
    * @param index the index of the site
    */
   public void dumpSite(int index) {
+    System.out.println("Site " + index);
+    System.out.println(sites[index]);
+  }
 
+  /**
+   * Print the committed values of all copies of variables xi at all sites.
+   * @param index the index of the variable
+   */
+  public void dumpVar(int index) {
+    if (index % 2 == 0) {
+      for (int i = 1; i <= ConstantValue.SiteNum; i++) {
+        System.out.println("Site " + i);
+        System.out.println(sites[i].variables[index]);
+      }
+    } else {
+      System.out.println("Site " + 1 + index % 10);
+      System.out.println(sites[1 + index % 10].variables[index]);
+    }
   }
 
   /**
@@ -140,7 +152,7 @@ public class SiteEngine {
    * @param index the index of the site.
    */
   public void setSiteFail(int index) {
-
+    sites[index].status = SiteStatus.FAIL;
   }
 
   /**
@@ -149,7 +161,7 @@ public class SiteEngine {
    * @param index the index of the site.
    */
   public void setSiteRecover(int index) {
-
+    sites[index].status = SiteStatus.RECOVER;
   }
 
   /**
