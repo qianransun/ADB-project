@@ -18,7 +18,7 @@ public class Engine {
 
   public static void main(String[] args) throws IOException {
     Engine taskManager = new Engine();
-    taskManager.initial("C:\\Users\\ztian\\Downloads\\ADB-project\\sample\\test11.txt");
+    taskManager.initial("/Users/ZTian/Downloads/adb/project/ADB-project/sample/test2.txt");
     taskManager.run();
     taskManager.printOut();
   }
@@ -50,12 +50,22 @@ public class Engine {
           break;
         case R:
           transaction = transactionList.get(instruction.transactionIndex - 1);
-          if (siteEngine.getReadLock(instruction)) {
-            transaction.lockTable[instruction.variableIndex] = Lock.READ;
-            setVariableValue(instruction);
+          if (transaction.isRO) {
+            if (instruction == transaction.instructionList.get(0)) {
+              for (Instruction ins : transaction.instructionList) {
+                if (ins.type != InstructionType.END) {
+                  ins.value = siteEngine.getVariableValue(ins.variableIndex);
+                }
+              }
+            }
           } else {
-            transaction.waiting = instruction;
-            cycleDetect(instruction.transactionIndex);
+            if (siteEngine.getReadLock(instruction)) {
+              transaction.lockTable[instruction.variableIndex] = Lock.READ;
+              setVariableValue(instruction);
+            } else {
+              transaction.waiting = instruction;
+              cycleDetect(instruction.transactionIndex);
+            }
           }
           break;
         case DUMP:
@@ -73,6 +83,7 @@ public class Engine {
           } else {
             System.out.println("T" + instruction.transactionIndex + " cannot commit.");
             instruction.value = 0;
+            abortTransaction(instruction.transactionIndex);
           }
           break;
       }
@@ -132,7 +143,10 @@ public class Engine {
     boolean[] onStack = new boolean[transactionList.size() + 1];
     DFS(marked, edgeTo, onStack, transactionIndex, cycle);
     if (cycle.size() != 0) {
-      abortTransaction(getYoungestTransaction(cycle));
+      int max = getYoungestTransaction(cycle);
+      abortTransaction(max);
+      System.out.println("There exists a cycle in which T" + max + " is the youngest. "
+          + "Abort.");
     }
   }
 
@@ -147,8 +161,6 @@ public class Engine {
   }
 
   private void abortTransaction(int transactionIndex) {
-    System.out.println("There exists a cycle in which T" + transactionIndex + " is the youngest. "
-        + "Abort.");
     siteEngine.removeWaiting(transactionList.get(transactionIndex - 1).waiting);
     releaseLocks(transactionIndex);
     transactionList.get(transactionIndex - 1).setTransactionAborted();
