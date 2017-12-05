@@ -139,11 +139,11 @@ public class SiteEngine {
     if (index % 2 == 0) {
       for (int i = 1; i <= ConstantValue.SiteNum; i++) {
         System.out.println("Site " + i);
-        System.out.println(sites[i]);
+        System.out.println(sites[i].variables[index]);
       }
     } else {
       System.out.println("Site " + 1 + index % 10);
-      System.out.println(sites[1 + index % 10]);
+      System.out.println(sites[1 + index % 10].variables[index]);
     }
   }
 
