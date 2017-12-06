@@ -6,7 +6,7 @@ import java.util.List;
 
 public class Site {
   Variable[] variables;
-    SiteStatus status;
+  SiteStatus status;
 
   Site() {
     variables = new Variable[ConstantValue.VariableNum + 1];
