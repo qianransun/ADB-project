@@ -11,6 +11,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Comparator;
+import java.util.Collections;
 
 public class Engine {
   private List<Instruction> instructionList = new ArrayList<>();
@@ -20,8 +22,10 @@ public class Engine {
 
   public static void main(String[] args) throws IOException {
     Engine taskManager = new Engine();
-    taskManager.initial("/Users/ZTian/Downloads/adb/project/ADB-project/sample/test4.txt");
+    taskManager.initial("/Users/qianran/ADB-project/sample/test19.txt");
     taskManager.run();
+    System.out.println();
+    System.out.println();
     taskManager.printOut();
   }
 
@@ -41,6 +45,7 @@ public class Engine {
           }
         }
       }
+      System.out.println();
     }
   }
 
@@ -50,33 +55,37 @@ public class Engine {
       switch (instruction.type) {
         case W:
           transaction = transactionList.get(instruction.transactionIndex - 1);
-          if (siteEngine.getWriteLock(instruction)) {
-            transaction.lockTable[instruction.variableIndex] = Lock.WRITE;
-            transaction.changeList.put(instruction.variableIndex, instruction.value);
-          } else {
-            transaction.waiting = instruction;
-            cycleDetect(instruction.transactionIndex);
+          if (transaction.status != TransactionStatus.ABORTED) {
+            if (siteEngine.getWriteLock(instruction)) {
+              transaction.lockTable[instruction.variableIndex] = Lock.WRITE;
+              transaction.changeList.put(instruction.variableIndex, instruction.value);
+            } else {
+              transaction.waiting = instruction;
+              cycleDetect(instruction.transactionIndex);
+            }
           }
           break;
         case R:
           transaction = transactionList.get(instruction.transactionIndex - 1);
-          if (transaction.isRO) {
-            if (instruction == transaction.instructionList.get(0)) {
-              for (Instruction ins : transaction.instructionList) {
-                if (ins.type != InstructionType.END) {
-                  ins.value = siteEngine.getVariableValue(ins.variableIndex);
+          if (transaction.status != TransactionStatus.ABORTED) {
+            if (transaction.isRO) {
+              if (instruction == transaction.instructionList.get(0)) {
+                for (Instruction ins : transaction.instructionList) {
+                  if (ins.type != InstructionType.END) {
+                    ins.value = siteEngine.getVariableValue(ins.variableIndex);
+                  }
                 }
               }
-            }
-          } else {
-            if (siteEngine.getReadLock(instruction)) {
-              if (transaction.lockTable[instruction.variableIndex] != Lock.WRITE) {
-                transaction.lockTable[instruction.variableIndex] = Lock.READ;
-              }
-              setVariableValue(instruction);
             } else {
-              transaction.waiting = instruction;
-              cycleDetect(instruction.transactionIndex);
+              if (siteEngine.getReadLock(instruction)) {
+                if (transaction.lockTable[instruction.variableIndex] != Lock.WRITE) {
+                  transaction.lockTable[instruction.variableIndex] = Lock.READ;
+                }
+                setVariableValue(instruction);
+              } else {
+                transaction.waiting = instruction;
+                cycleDetect(instruction.transactionIndex);
+              }
             }
           }
           break;
@@ -88,14 +97,17 @@ public class Engine {
           } else {
             siteEngine.dump();
           }
+          System.out.println();
           break;
         case FAIL:
           Set<Integer> transactionToAbort = siteEngine.setSiteFail(instruction.value);
           for (Integer index : transactionToAbort) {
+            System.out.println("T" + index + " is aborted due to site fail.");
             abortTransaction(index);
           }
           break;
         case RECOVER:
+          removeTransactionWaiting(siteEngine.setSiteRecover(instruction.value));
           break;
         case END:
           transaction = transactionList.get(instruction.transactionIndex - 1);
@@ -126,7 +138,7 @@ public class Engine {
 
   private void writeVariables(Transaction transaction) {
     for (Map.Entry<Integer, Integer> entry : transaction.changeList.entrySet()) {
-      siteEngine.writeVariable(entry.getKey(), entry.getValue());
+      siteEngine.writeVariable(entry.getKey(), entry.getValue(), transaction.index);
     }
   }
 
@@ -134,15 +146,18 @@ public class Engine {
     for (int i = 1; i <= ConstantValue.VariableNum; ++i) {
       Transaction transaction = transactionList.get(transactionIndex - 1);
       if (transaction.lockTable[i] != null) {
-        List<Instruction> acquiredLocks = siteEngine.releaseLock(i, transactionIndex);
-        for (Instruction instruction : acquiredLocks) {
-          if (instruction.type == InstructionType.R) {
-            setVariableValue(instruction);
-          }
-          transactionList.get(instruction.transactionIndex - 1).removeWaiting();
-        }
+        removeTransactionWaiting(siteEngine.releaseLock(i, transactionIndex));
         transaction.lockTable[i] = null;
       }
+    }
+  }
+
+  private void removeTransactionWaiting(List<Instruction> acquiredLocks) {
+    for (Instruction instruction : acquiredLocks) {
+      if (instruction.type == InstructionType.R) {
+        setVariableValue(instruction);
+      }
+      transactionList.get(instruction.transactionIndex - 1).removeWaiting();
     }
   }
 
@@ -220,6 +235,7 @@ public class Engine {
   private void initial(String inputFile) throws IOException {
     readFile(inputFile);
     parseInstructions();
+    Collections.sort(transactionList, new MyComparator());
   }
 
   private void readFile(String inputFile) throws IOException{
@@ -290,7 +306,11 @@ public class Engine {
           transactionList.add(new Transaction(instruction.transactionIndex, true));
           break;
         case END: case R: case W:
-          transactionList.get(instruction.transactionIndex - 1).instructionList.add(instruction);
+          for (Transaction transaction : transactionList) {
+            if (transaction.index == instruction.transactionIndex) {
+              transaction.instructionList.add(instruction);
+            }
+          }
           break;
       }
     }
@@ -319,5 +339,16 @@ public class Engine {
       pos[0]++;
     }
     return index;
+  }
+
+}
+
+class MyComparator implements Comparator<Transaction>{
+  @Override
+  public int compare(Transaction t1, Transaction t2) {
+    if (t1.index == t2.index) {
+      return 0;
+    }
+    return t1.index < t2.index ? -1 : 1;
   }
 }

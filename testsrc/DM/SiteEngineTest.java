@@ -24,8 +24,8 @@ public class SiteEngineTest {
     c.transactionIndex = 2;
     c.variableIndex = 1;
 
-    System.out.println(engine.getWriteLock(c));
     System.out.println(engine.getReadLock(b));
+    System.out.println(engine.getWriteLock(c));
   }
 
   @Test
@@ -47,8 +47,8 @@ public class SiteEngineTest {
     c.transactionIndex = 2;
     c.variableIndex = 2;
 
-    engine.getReadLock(a);
-    System.out.println(engine.getReadLock(b));
     System.out.println(engine.getWriteLock(c));
+    System.out.println(engine.getReadLock(a));
+    System.out.println(engine.getReadLock(b));
   }
 }

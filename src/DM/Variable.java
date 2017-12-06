@@ -11,7 +11,6 @@ public class Variable {
   int value;
   Lock lock;
   Set<Integer> lockTable;
-  Queue<Instruction> waitList;
   SiteStatus status;
 
   Variable(int index) {
@@ -19,7 +18,6 @@ public class Variable {
     this.value = 10 * index;
     lock = Lock.NONE;
     lockTable = new HashSet<>();
-    waitList = new ArrayDeque<>();
     status = SiteStatus.UP;
   }
 
