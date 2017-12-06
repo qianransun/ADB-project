@@ -8,7 +8,7 @@ import java.util.Map;
 
 public class Transaction {
   List<Instruction> instructionList;
-  private int index;
+  int index;
   boolean isRO;
   Lock[] lockTable;
   Instruction waiting;

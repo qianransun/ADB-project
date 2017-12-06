@@ -1,5 +1,7 @@
 package DM;
 
+import TM.Instruction;
+import TM.InstructionType;
 import org.junit.Test;
 
 public class VariableTest {

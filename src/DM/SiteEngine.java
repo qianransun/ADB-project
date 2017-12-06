@@ -2,14 +2,23 @@ package DM;
 
 import TM.ConstantValue;
 import TM.Instruction;
-import java.util.ArrayList;
-import java.util.List;
+
+import java.util.*;
 
 public class SiteEngine {
   private Site[] sites;
+  private List<List<Instruction>> waitList;
 
   public SiteEngine() {
     sites = SiteFactory.constructSites();
+    initalWaitList();
+  }
+
+  private void initalWaitList() {
+    waitList = new ArrayList<>();
+    for (int i = 0; i <= ConstantValue.VariableNum; ++i) {
+      waitList.add(new ArrayList<>());
+    }
   }
 
   /**
@@ -25,41 +34,41 @@ public class SiteEngine {
         setWriteLock(instruction);
         return true;
       } else {
-        addWaitList(instruction, siteIndex);
+        addWaitList(instruction);
         return false;
       }
     } else {
-      boolean lock = true;
+      boolean canLock = true;
       for (int i = 1; i <= ConstantValue.SiteNum; ++i) {
-        if (!getWriteLockHelper(instruction, i)) {
-          lock = false;
+        if (sites[i].variables[instruction.variableIndex].status != SiteStatus.FAIL
+            && !getWriteLockHelper(instruction, i)) {
+          canLock = false;
           break;
         }
       }
-      if (lock) {
+      if (canLock) {
         setWriteLock(instruction);
       } else {
-        for (int i = 1; i <= ConstantValue.SiteNum; ++i) {
-          addWaitList(instruction, i);
-        }
+        addWaitList(instruction);
       }
-      return lock;
+      return canLock;
     }
   }
 
-  private void addWaitList(Instruction instruction, int siteIndex) {
-    sites[siteIndex].variables[instruction.variableIndex].waitList.add(instruction);
+  private void addWaitList(Instruction instruction) {
+    waitList.get(instruction.variableIndex).add(instruction);
   }
 
   private boolean getWriteLockHelper(Instruction instruction, int siteIndex) {
     Variable var = sites[siteIndex].variables[instruction.variableIndex];
+    if (var.status == SiteStatus.FAIL) {
+      return false;
+    }
     switch (var.lock) {
-      case WRITE:
-        return var.lockTable.get(0) == instruction.transactionIndex;
-      case READ:
-        return var.lockTable.size() == 1 && var.lockTable.get(0) == instruction.transactionIndex;
-      default:
+      case NONE:
         return true;
+      default:
+        return var.lockTable.size() == 1 && var.lockTable.contains(instruction.transactionIndex);
     }
   }
 
@@ -69,7 +78,9 @@ public class SiteEngine {
       setWriteLockHelper(instruction.variableIndex, instruction.transactionIndex, siteIndex);
     } else {
       for (int i = 1; i <= ConstantValue.SiteNum; ++i) {
-        setWriteLockHelper(instruction.variableIndex, instruction.transactionIndex, i);
+        if (sites[i].variables[instruction.variableIndex].status != SiteStatus.FAIL) {
+          setWriteLockHelper(instruction.variableIndex, instruction.transactionIndex, i);
+        }
       }
     }
   }
@@ -86,34 +97,51 @@ public class SiteEngine {
    * @return true, if locks can be set. Otherwise, false.
    */
   public boolean getReadLock(Instruction instruction) {
-    int siteIndex = instruction.variableIndex % 2 != 0 ? 1 + (instruction.variableIndex % 10) : 1;
+    int siteIndex = instruction.variableIndex % 2 != 0 ? 1 + (instruction.variableIndex % 10) :
+            findFirstUpSite(instruction.variableIndex);
+    if (getReadLockHelper(instruction, siteIndex)) {
+      setReadLock(instruction);
+      return true;
+    } else {
+      addWaitList(instruction);
+      return false;
+    }
+  }
+
+  private int findFirstUpSite(int variableIndex) {
+    for (int i = 1; i <= ConstantValue.SiteNum; ++i) {
+      if (sites[i].variables[variableIndex].status == SiteStatus.UP) {
+        return i;
+      }
+    }
+    return 1;
+  }
+
+  private boolean getReadLockHelper(Instruction instruction, int siteIndex) {
     Variable var = sites[siteIndex].variables[instruction.variableIndex];
+    if (sites[siteIndex].variables[instruction.variableIndex].status != SiteStatus.UP) {
+      return false;
+    }
     switch (var.lock) {
-      case READ:
-        if (!var.waitList.isEmpty()) {
-          var.waitList.add(instruction);
-          return false;
-        }
-        setReadLock(instruction);
-        return true;
-      case NONE:
-        setReadLock(instruction);
-        return true;
+      case WRITE:
+        return var.lockTable.size() == 1 && var.lockTable.contains(instruction.transactionIndex);
       default:
-        var.waitList.add(instruction);
-        return false;
+        return waitList.get(instruction.variableIndex).isEmpty();
     }
   }
 
   private void setReadLock(Instruction instruction) {
-    int siteIndex = instruction.variableIndex % 2 != 0 ? 1 + (instruction.variableIndex % 10) : 1;
+    int siteIndex = instruction.variableIndex % 2 != 0 ? 1 + (instruction.variableIndex % 10) :
+        findFirstUpSite(instruction.variableIndex);
     Variable var = sites[siteIndex].variables[instruction.variableIndex];
-    var.lock = Lock.READ;
+    if (var.lock == Lock.NONE) {
+      var.lock = Lock.READ;
+    }
     var.lockTable.add(instruction.transactionIndex);
   }
 
   /**
-   * Print out the commited values of all copies of all variables.
+   * Print out the committed values of all copies of all variables.
    */
   public void dump() {
     for (int i = 1; i <= ConstantValue.SiteNum; i++) {
@@ -142,26 +170,53 @@ public class SiteEngine {
         System.out.println(sites[i].variables[index]);
       }
     } else {
-      System.out.println("Site " + 1 + index % 10);
+      System.out.println("Site " + (1 + index % 10));
       System.out.println(sites[1 + index % 10].variables[index]);
     }
   }
 
   /**
-   * Set the status of site i to fail.
-   * @param index the index of the site.
+   * Set the status of site i to fail. Actually, we are setting the status of each variable to fail.
+   * Accumulate all transactions that have acquired lock in that site.
+   * Erase the lock table in that site.
+   * @param siteIndex the index of the site.
+   * @return list of transaction index.
    */
-  public void setSiteFail(int index) {
-    sites[index].status = SiteStatus.FAIL;
+  public Set<Integer> setSiteFail(int siteIndex) {
+    Set<Integer> transactionToAbort = new HashSet<>();
+    for (int i = 1; i <= ConstantValue.VariableNum; ++i) {
+      Variable var = sites[siteIndex].variables[i];
+      if (var != null) {
+        var.status = SiteStatus.FAIL;
+        if (var.lock != Lock.NONE) {
+          transactionToAbort.addAll(var.lockTable);
+          var.lockTable.clear();
+          var.lock = Lock.NONE;
+        }
+      }
+    }
+    return transactionToAbort;
   }
 
   /**
    * Set the status of the site i to recover. Note that the recover site still accepts no read
    * operation until a committed write operation.
-   * @param index the index of the site.
+   * @param siteIndex the index of the site.
    */
-  public void setSiteRecover(int index) {
-    sites[index].status = SiteStatus.RECOVER;
+  public List<Instruction> setSiteRecover(int siteIndex) {
+    List<Instruction> acquiredLocks = new ArrayList<>();
+    for (int i = 1; i <= ConstantValue.VariableNum; ++i) {
+      Variable var = sites[siteIndex].variables[i];
+      if (var != null) {
+        if (i % 2 != 0) {
+          var.status = SiteStatus.UP;
+        } else {
+          var.status = SiteStatus.RECOVER;
+        }
+        acquiredLocks.addAll(dequeWaitList(i));
+      }
+    }
+    return acquiredLocks;
   }
 
   /**
@@ -189,7 +244,7 @@ public class SiteEngine {
         sites[siteIndex].variables[variableIndex].lockTable.clear();
         break;
       case READ:
-        sites[siteIndex].variables[variableIndex].lockTable.remove(new Integer(transactionIndex));
+        sites[siteIndex].variables[variableIndex].lockTable.remove(transactionIndex);
         if (sites[siteIndex].variables[variableIndex].lockTable.size() == 0) {
           sites[siteIndex].variables[variableIndex].lock = Lock.NONE;
         }
@@ -198,103 +253,89 @@ public class SiteEngine {
   }
 
   /**
-   * For each released variable, we try to deque its waitlist if there exists one.
+   * For each released variable, we try to deque its wait list if there exists one.
    * @param variableIndex the index of the variable
    * @return the list of instructions that have acquired their lock
    */
   private List<Instruction> dequeWaitList(int variableIndex) {
     List<Instruction> acquiredLocks = new ArrayList<>();
-    if (variableIndex % 2 != 0) {
-      int siteIndex = 1 + (variableIndex % 10);
-      boolean flag = true;
-      while (flag && !sites[siteIndex].variables[variableIndex].waitList.isEmpty()) {
-        Instruction instruction = sites[siteIndex].variables[variableIndex].waitList.peek();
-        switch (instruction.type) {
-          case W:
+    List<Instruction> wait = waitList.get(variableIndex);
+    for (int i = 0; i < wait.size(); ++i) {
+      Instruction instruction = wait.get(i);
+      switch (instruction.type) {
+        case W:
+          if (variableIndex % 2 != 0) {
+            int siteIndex = 1 + (variableIndex % 10);
             if (getWriteLockHelper(instruction, siteIndex)) {
-              acquiredLocks.add(sites[siteIndex].variables[variableIndex].waitList.poll());
+              setWriteLock(instruction);
+              acquiredLocks.add(instruction);
+              wait.remove(instruction);
+              i--;
             }
-            flag = false;
-            break;
-          case R:
-            dequeReadInstruction(instruction, acquiredLocks);
-            break;
-        }
-      }
-    } else {
-      boolean flag = true;
-      while (flag && !sites[1].variables[variableIndex].waitList.isEmpty()) {
-        Instruction instruction = sites[1].variables[variableIndex].waitList.peek();
-        switch (instruction.type) {
-          case W:
-            boolean lock = true;
-            for (int i = 1; i <= ConstantValue.SiteNum; ++i) {
-              if (!getWriteLockHelper(instruction, i)) {
-                lock = false;
+          } else {
+            boolean canLock = true;
+            for (int j = 1; j <= ConstantValue.SiteNum; ++j) {
+              if (sites[j].variables[instruction.variableIndex].status != SiteStatus.FAIL
+                  && !getWriteLockHelper(instruction, j)) {
+                canLock = false;
                 break;
               }
             }
-            if (lock) {
-              acquiredLocks.add(sites[1].variables[variableIndex].waitList.poll());
-              for (int i = 2; i <= ConstantValue.SiteNum; ++i) {
-                sites[i].variables[variableIndex].waitList.poll();
-              }
+            if (canLock) {
+              setWriteLock(instruction);
+              acquiredLocks.add(instruction);
+              wait.remove(instruction);
             }
-            flag = false;
-            break;
-          case R:
-            dequeReadInstruction(instruction, acquiredLocks);
-            break;
-        }
+          }
+          break;
+        case R:
+          int siteIndex = instruction.variableIndex % 2 != 0 ? 1 + (instruction.variableIndex % 10)
+              : findFirstUpSite(instruction.variableIndex);
+          if (i == 0 && sites[siteIndex].variables[variableIndex].lock != Lock.WRITE ||
+              getReadLockHelper(instruction, siteIndex)) {
+            setReadLock(instruction);
+            acquiredLocks.add(instruction);
+            wait.remove(instruction);
+            i--;
+          }
+          break;
       }
     }
     return acquiredLocks;
   }
 
-  private boolean dequeReadInstruction(Instruction instruction, List<Instruction> acquiredLocks) {
-    int siteIndex = instruction.variableIndex % 2 != 0 ? 1 + (instruction.variableIndex % 10) : 1;
-    Variable var = sites[siteIndex].variables[instruction.variableIndex];
-    if (var.lock == Lock.NONE || var.lock == Lock.READ) {
-      setReadLock(instruction);
-      acquiredLocks.add(sites[siteIndex].variables[instruction.variableIndex].waitList.poll());
-      return true;
-    } else {
-      return false;
-    }
+  public void removeWaiting(Instruction instruction) {
+    waitList.get(instruction.variableIndex).remove(instruction);
   }
 
-  public void removeWaiting(Instruction instruction) {
-    if (instruction.variableIndex % 2 != 0) {
-      removeWaitingHelper(instruction, 1 + (instruction.variableIndex % 10));
+  public Set<Integer> getLockTable(int variableIndex) {
+    Set<Integer> lockTable = new HashSet<>();
+    if (variableIndex % 2 != 0) {
+      lockTable.addAll(sites[1 + (variableIndex % 10)].variables[variableIndex].lockTable);
     } else {
       for (int i = 1; i <= ConstantValue.SiteNum; ++i) {
-        removeWaitingHelper(instruction, i);
+        lockTable.addAll(sites[i].variables[variableIndex].lockTable);
       }
     }
+    return lockTable;
   }
 
-  private void removeWaitingHelper(Instruction instruction, int siteIndex) {
-    sites[siteIndex].variables[instruction.variableIndex].waitList.remove(instruction);
-  }
-
-  public List<Integer> getLockTable(int variableIndex) {
-    int siteIndex = variableIndex % 2 != 0 ? 1 + (variableIndex % 10) : 1;
-    return sites[siteIndex].variables[variableIndex].lockTable;
-  }
-
-  public void writeVariable(int variableIndex, int value) {
+  public void writeVariable(int variableIndex, int value, int transactionIndex) {
     if (variableIndex % 2 != 0) {
       int siteIndex = 1 + (variableIndex % 10);
       sites[siteIndex].variables[variableIndex].value = value;
     } else {
       for (int i = 1; i <= ConstantValue.SiteNum; ++i) {
-        sites[i].variables[variableIndex].value = value;
+        if (sites[i].variables[variableIndex].lockTable.contains(transactionIndex)) {
+          sites[i].variables[variableIndex].value = value;
+        }
       }
     }
   }
 
   public int getVariableValue(int variableIndex) {
-    int siteIndex = variableIndex % 2 != 0 ? 1 + (variableIndex % 10) : 1;
+    int siteIndex = variableIndex % 2 != 0 ? 1 + (variableIndex % 10) :
+      findFirstUpSite(variableIndex);
     return sites[siteIndex].variables[variableIndex].value;
   }
 }
