@@ -2,22 +2,22 @@ package DM;
 
 import TM.Instruction;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Set;
+import java.util.HashSet;
 import java.util.Queue;
 
 public class Variable {
   private int index;
   int value;
   Lock lock;
-  List<Integer> lockTable;
+  Set<Integer> lockTable;
   Queue<Instruction> waitList;
 
   Variable(int index) {
     this.index = index;
     this.value = 10 * index;
     lock = Lock.NONE;
-    lockTable = new ArrayList<>();
+    lockTable = new HashSet<>();
     waitList = new ArrayDeque<>();
   }
 

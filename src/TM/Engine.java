@@ -7,8 +7,10 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class Engine {
   private List<Instruction> instructionList = new ArrayList<>();
@@ -18,18 +20,26 @@ public class Engine {
 
   public static void main(String[] args) throws IOException {
     Engine taskManager = new Engine();
-    taskManager.initial("/Users/ZTian/Downloads/adb/project/ADB-project/sample/test2.txt");
+    taskManager.initial("/Users/ZTian/Downloads/adb/project/ADB-project/sample/test4.txt");
     taskManager.run();
     taskManager.printOut();
   }
 
   private void printOut() {
-    for (Instruction instruction : instructionList) {
-      System.out.println(instruction);
-      switch (instruction.type) {
-        case R:
-          System.out.println("x" + instruction.variableIndex + "'s value is " + instruction.value);
-          break;
+    for (Transaction transaction : transactionList) {
+      System.out.println("T" + transaction.index);
+      if (transaction.status == TransactionStatus.ABORTED) {
+        System.out.println("T" + transaction.index + " is aborted.");
+      } else {
+        for (Instruction instruction : transaction.instructionList) {
+          System.out.println(instruction);
+          switch (instruction.type) {
+            case R:
+              System.out.println("x" + instruction.variableIndex + "'s value is " +
+                  instruction.value);
+              break;
+          }
+        }
       }
     }
   }
@@ -60,7 +70,9 @@ public class Engine {
             }
           } else {
             if (siteEngine.getReadLock(instruction)) {
-              transaction.lockTable[instruction.variableIndex] = Lock.READ;
+              if (transaction.lockTable[instruction.variableIndex] != Lock.WRITE) {
+                transaction.lockTable[instruction.variableIndex] = Lock.READ;
+              }
               setVariableValue(instruction);
             } else {
               transaction.waiting = instruction;
@@ -78,14 +90,19 @@ public class Engine {
           }
           break;
         case FAIL:
+          Set<Integer> transactionToAbort = siteEngine.setSiteFail(instruction.value);
+          for (Integer index : transactionToAbort) {
+            abortTransaction(index);
+          }
           break;
         case RECOVER:
           break;
         case END:
-          if (transactionList.get(instruction.transactionIndex - 1).waiting == null) {
+          transaction = transactionList.get(instruction.transactionIndex - 1);
+          if (transaction.waiting == null && transaction.status != TransactionStatus.ABORTED) {
             // 1 represents can commit in this case.
             System.out.println("T" + instruction.transactionIndex + " can commit.");
-            writeVariables(transactionList.get(instruction.transactionIndex - 1));
+            writeVariables(transaction);
             releaseLocks(instruction.transactionIndex);
           } else {
             System.out.println("T" + instruction.transactionIndex + " cannot commit.");
@@ -158,9 +175,12 @@ public class Engine {
   }
 
   private void abortTransaction(int transactionIndex) {
-    siteEngine.removeWaiting(transactionList.get(transactionIndex - 1).waiting);
+    Transaction transaction = transactionList.get(transactionIndex - 1);
+    if (transaction.waiting != null) {
+      siteEngine.removeWaiting(transaction.waiting);
+    }
     releaseLocks(transactionIndex);
-    transactionList.get(transactionIndex - 1).setTransactionAborted();
+    transaction.setTransactionAborted();
   }
 
 
@@ -177,9 +197,9 @@ public class Engine {
       List<Integer> cycle) {
     onStack[transactionIndex] = true;
     marked[transactionIndex] = true;
-    List<Integer> lockTable = transactionList.get(transactionIndex - 1).
-        waiting == null ? new ArrayList<>() : siteEngine.getLockTable(transactionList.
-        get(transactionIndex - 1).waiting.variableIndex);
+    Transaction transaction = transactionList.get(transactionIndex - 1);
+    Set<Integer> lockTable = transaction.waiting == null ? new HashSet<>() : siteEngine.
+        getLockTable(transaction.waiting.variableIndex);
     for (Integer index : lockTable) {
       if (cycle.size() != 0) {
         return;
@@ -195,15 +215,6 @@ public class Engine {
       }
     }
     onStack[transactionIndex] = false;
-  }
-
-
-  /**
-   * Abort transactions according to fail site i.
-   * @param index the index of the site.
-   */
-  private void failSiteAbort(int index) {
-
   }
 
   private void initial(String inputFile) throws IOException {

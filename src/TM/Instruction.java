@@ -11,7 +11,7 @@ public class Instruction {
   public int value;
   public List<Integer> result;
 
-  Instruction() {
+  public Instruction() {
     type = InstructionType.DEFAULT;
     result = new ArrayList<>();
   }
