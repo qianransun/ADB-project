@@ -1,0 +1,4 @@
+For test20.txt:
+We are testing that a transaction can later read a variable that is read-locked by itself.
+And after that write operation, the variable becomes write-locked and later operation on the same
+variable is write-locked by the write operation.
