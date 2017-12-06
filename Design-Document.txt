@@ -3,7 +3,7 @@ Design Document
 Tian Zhao N15974307, Qianran Sun N13240100
 
 
-We have two packages in all.
+We have two packages TM(transformation manager) and DM(data manager) in all.
 
 (I) Package DM have 6 classes in all:
 
@@ -11,13 +11,16 @@ We have two packages in all.
 The class has 3 fields for lock status: READ, WRITE, NONE
 
 2. Site.java
-For each site, it has an array to save the variables a site has.
+The structure of a site, and each site, it has an array to save the variables a site has.
 Also, it contains the site status.
 
 3. SiteStatus.java
 Has three fields to show the site status: FAIL, RECOVER, UP
 
-4. SiteEngine.java
+4. SiteFactory.java
+Has one function: constructSites() which used to create all sites and put corresponding variables into each site.
+
+5. SiteEngine.java
 Manage all sites and those variables on each site.
 There are 8 functions inside.
 1) getWriteLock()
@@ -40,8 +43,7 @@ sites.
 
 8) setSiteRecover()
 
-5. SiteFactory.java
-Has a function: constructSites() which used to create all sites.
+
 
 6. Variable.java
 Has 5 fields to show the variable information.
