@@ -135,9 +135,18 @@ If not, the transaction should be aborted by calling abortTransaction(int transa
 
 6) releaseLocks(): release resources a transaction has 
 
-7) cycleDetect(): check if transactions are deadlocked. If there exists a cycle, then kill the youngest transaction in the cycle, release its resources and try to allocate its variables to other instructions. 
+7) cycleDetect(): check if transactions are deadlocked by calling function DFS(). If there exists a cycle, then kill the youngest transaction in the cycle by calling function abortTransaction(), release its resources and try to allocate its variables to other instructions. 
 
-8)
+8) getYongestTransaction(): get the youngest transaction in a cycle.
+
+9) abortTransaction(): abort the transaction and remove it from the transactionList and release locks which holded by the transaction.
+
+10) DFS(): the function which is used to detect the cycle and stored all transactions in the cycle to a list named cycle.
+
+11) failSiteAbort(): abort transactions caused by a site fail.
+
+12) readFile(): read file by line and distinguish each instruction by keyword and calls the function parseInstructions() to cope with all instructions.
+
 
 
 3. Instruction.java
@@ -160,78 +169,5 @@ RUN, ABORTED, COMMITTED
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-1. Engine (TM)
-Fields:
-
-Functions:
-run(): including the run of each operations, and do all operations of RO firstly.
-dump():
-detectCycle(): 
-
-
-2. Transactions 
-There are two subclasses including Read-Only and Read-Write transactions.
-Fields:
-index, type(Read-Only or not), operations, status, locks
-
-Functions:
-
-
-2. Operations
-Fields:
-a list of operaitons, type(begin() beginRO,R,W,dump(),end(),fail(),recover()) 
-
-
-3. Resource
-Fields:
-index, sites, wait list of transactions,
-
-
-4. Site (DM)
-Fields: 
-index, resource, status
-
-Functions:
-recover(): Recover Site and Change the value of the resource in the site, we change the value of the new write till the commit moment, and save the new value to a temp.
-dump(i):
-
-
-5. ReadFile
-read and pass each operations in the file
-
-
-6. Main
-    execute each function by sequence.
 
 
