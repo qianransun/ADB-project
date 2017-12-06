@@ -12,6 +12,7 @@ public class Variable {
   Lock lock;
   Set<Integer> lockTable;
   Queue<Instruction> waitList;
+  SiteStatus status;
 
   Variable(int index) {
     this.index = index;
@@ -19,6 +20,7 @@ public class Variable {
     lock = Lock.NONE;
     lockTable = new HashSet<>();
     waitList = new ArrayDeque<>();
+    status = SiteStatus.UP;
   }
 
   @Override
