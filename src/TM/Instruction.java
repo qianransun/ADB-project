@@ -9,11 +9,9 @@ public class Instruction {
   public int transactionIndex;
   // Used as site index in dump(value) and target value in W(T2, x1, value);
   public int value;
-  public List<Integer> result;
 
   public Instruction() {
     type = InstructionType.DEFAULT;
-    result = new ArrayList<>();
   }
 
   @Override

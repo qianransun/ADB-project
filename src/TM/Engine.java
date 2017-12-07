@@ -22,7 +22,7 @@ public class Engine {
 
   public static void main(String[] args) throws IOException {
     Engine taskManager = new Engine();
-    taskManager.initial(".\\sample\\test21a.txt");
+    taskManager.initial(".\\sample\\test22.txt");
     taskManager.run();
     System.out.println();
     System.out.println();
@@ -34,7 +34,7 @@ public class Engine {
       System.out.println("T" + transaction.index);
       if (transaction.status == TransactionStatus.ABORTED) {
         System.out.println("T" + transaction.index + " is aborted.");
-      } else {
+      } else if (transaction.status == TransactionStatus.COMMITTED){
         for (Instruction instruction : transaction.instructionList) {
           System.out.println(instruction);
           switch (instruction.type) {
@@ -112,13 +112,12 @@ public class Engine {
         case END:
           transaction = transactionList.get(instruction.transactionIndex - 1);
           if (transaction.waiting == null && transaction.status != TransactionStatus.ABORTED) {
-            // 1 represents can commit in this case.
             System.out.println("T" + instruction.transactionIndex + " can commit.");
             writeVariables(transaction);
             releaseLocks(instruction.transactionIndex);
+            transaction.status = TransactionStatus.COMMITTED;
           } else {
             System.out.println("T" + instruction.transactionIndex + " cannot commit.");
-            instruction.value = 0;
             abortTransaction(instruction.transactionIndex);
           }
           break;
@@ -244,6 +243,9 @@ public class Engine {
     String line;
     int[] pos = new int[1];
     while ((line = br.readLine()) != null) {
+      if (line.trim().isEmpty()) {
+        continue;
+      }
       pos[0] = 0;
       Instruction instruction = new Instruction();
       switch (line.charAt(pos[0])) {
