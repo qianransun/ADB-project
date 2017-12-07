@@ -1,0 +1,11 @@
+For test20.txt:
+We are testing that a transaction can later write to a variable that is read-locked by itself.
+And after that write operation, the variable becomes write-locked and later operations on the same
+variable are all write-locked by the write operation.
+
+For test20a.txt:
+A transaction can read a variable that is write-locked by itself. However, even with this read
+operation, the variable is still write-locked. Thus, when there comes read or write operation later,
+they are put into wait list. In this case, R(T2, x1) operation must wait until T1 commit or abort.
+
+For test20b.txt:

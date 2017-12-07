@@ -291,8 +291,9 @@ public class SiteEngine {
         case R:
           int siteIndex = instruction.variableIndex % 2 != 0 ? 1 + (instruction.variableIndex % 10)
               : findFirstUpSite(instruction.variableIndex);
-          if (i == 0 && sites[siteIndex].variables[variableIndex].lock != Lock.WRITE ||
-              getReadLockHelper(instruction, siteIndex)) {
+          if (sites[siteIndex].variables[variableIndex].status == SiteStatus.UP && (i == 0 &&
+              sites[siteIndex].variables[variableIndex].lock != Lock.WRITE ||
+              getReadLockHelper(instruction, siteIndex))) {
             setReadLock(instruction);
             acquiredLocks.add(instruction);
             wait.remove(instruction);
@@ -328,6 +329,9 @@ public class SiteEngine {
       for (int i = 1; i <= ConstantValue.SiteNum; ++i) {
         if (sites[i].variables[variableIndex].lockTable.contains(transactionIndex)) {
           sites[i].variables[variableIndex].value = value;
+          if (sites[i].variables[variableIndex].status == SiteStatus.RECOVER) {
+            sites[i].variables[variableIndex].status = SiteStatus.UP;
+          }
         }
       }
     }
