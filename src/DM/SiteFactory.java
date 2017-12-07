@@ -3,7 +3,9 @@ package DM;
 import TM.ConstantValue;
 
 /**
- * The SiteFactory is used to build sites and variables.
+ * @Author: Tian Zhao, Qianran Sun
+ * @Date: 12/7/2017
+ * @General Description: The SiteFactory is used to build sites and variables.
  */
 public class SiteFactory {
   /**

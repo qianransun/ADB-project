@@ -5,16 +5,24 @@ import TM.Instruction;
 
 import java.util.*;
 
+/**
+ * @Author: Tian Zhao, Qianran Sun
+ * @Date: 12/7/2017
+ * @General Description: The site engine is monitoring DM. It takes charge of managing variables and
+ * sites. It implements the algorithm to try to acquire locks on variables. It is also responsible
+ * for releasing locks on variables and process variables' wait list. Additionally, it takes care of
+ * maintaining the status of sites.
+ */
 public class SiteEngine {
   private Site[] sites;
   private List<List<Instruction>> waitList;
 
   public SiteEngine() {
     sites = SiteFactory.constructSites();
-    initalWaitList();
+    initialWaitList();
   }
 
-  private void initalWaitList() {
+  private void initialWaitList() {
     waitList = new ArrayList<>();
     for (int i = 0; i <= ConstantValue.VariableNum; ++i) {
       waitList.add(new ArrayList<>());
@@ -176,11 +184,11 @@ public class SiteEngine {
   }
 
   /**
-   * Set the status of site i to fail. Actually, we are setting the status of each variable to fail.
+   * Set the status of site i to fail. Actually, we are setting the status of each variable on the site to fail.
    * Accumulate all transactions that have acquired lock in that site.
    * Erase the lock table in that site.
    * @param siteIndex the index of the site.
-   * @return list of transaction index.
+   * @return set of transaction index.
    */
   public Set<Integer> setSiteFail(int siteIndex) {
     Set<Integer> transactionToAbort = new HashSet<>();
@@ -202,6 +210,7 @@ public class SiteEngine {
    * Set the status of the site i to recover. Note that the recover site still accepts no read
    * operation until a committed write operation.
    * @param siteIndex the index of the site.
+   * @return list of instructions that have acquired their lock due to the recover of the site
    */
   public List<Instruction> setSiteRecover(int siteIndex) {
     List<Instruction> acquiredLocks = new ArrayList<>();
@@ -255,7 +264,7 @@ public class SiteEngine {
   /**
    * For each released variable, we try to deque its wait list if there exists one.
    * @param variableIndex the index of the variable
-   * @return the list of instructions that have acquired their lock
+   * @return list of instructions that have acquired their lock
    */
   private List<Instruction> dequeWaitList(int variableIndex) {
     List<Instruction> acquiredLocks = new ArrayList<>();
