@@ -22,7 +22,7 @@ public class Engine {
 
   public static void main(String[] args) throws IOException {
     Engine taskManager = new Engine();
-    taskManager.initial("./sample/test20a.txt");
+    taskManager.initial(".\\sample\\test21a.txt");
     taskManager.run();
     System.out.println();
     System.out.println();

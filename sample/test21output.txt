@@ -1,0 +1,7 @@
+For test21.txt:
+T1 is not aborted immediately, the operation R(T1,x1) is put into wait list and waits for the site
+to recover. When the site is recovered, the operation can read immediately.
+
+For test21a.txt:
+Although site 2 is recovered, R(T1,x2) is still blocked until the next write operation. Thus,
+R(T1,x2) sees the result of W(T2,x2,1).
