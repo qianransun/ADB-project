@@ -1,14 +1,11 @@
 package TM;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class Instruction {
   public InstructionType type;
   public int variableIndex;
   public int transactionIndex;
   // Used as site index in dump(value) and target value in W(T2, x1, value);
-  public int value;
+  int value;
 
   public Instruction() {
     type = InstructionType.DEFAULT;

@@ -9,3 +9,5 @@ operation, the variable is still write-locked. Thus, when there comes read or wr
 they are put into wait list. In this case, R(T2, x1) operation must wait until T1 commit or abort.
 
 For test20b.txt:
+There is a shared read lock on variable x2. Thus, the instruction W(T1,x2,1) is put into wait list.
+Thus, when process end(T1), T1 still has instruction in the wait list and thus, is aborted.

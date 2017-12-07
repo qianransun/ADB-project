@@ -14,6 +14,13 @@ import java.util.Set;
 import java.util.Comparator;
 import java.util.Collections;
 
+/**
+ * @Author: Tian Zhao, Qianran Sun
+ * @Date: 12/7/2017
+ * @General Description: The Engine is monitoring TM. It reads in input file, runs the algorithm and
+ * prints out the result.
+ * @Side Effect: Each instruction that has effect on sites and variables is reflected in site engine.
+ */
 public class Engine {
   private List<Instruction> instructionList = new ArrayList<>();
   private List<Transaction> transactionList = new ArrayList<>();
@@ -22,7 +29,7 @@ public class Engine {
 
   public static void main(String[] args) throws IOException {
     Engine taskManager = new Engine();
-    taskManager.initial(".\\sample\\test22.txt");
+    taskManager.initial(args[0]);
     taskManager.run();
     System.out.println();
     System.out.println();
@@ -342,7 +349,6 @@ public class Engine {
     }
     return index;
   }
-
 }
 
 class MyComparator implements Comparator<Transaction>{

@@ -1,8 +1,6 @@
 package DM;
 
 import TM.ConstantValue;
-import java.util.ArrayList;
-import java.util.List;
 
 public class Site {
   Variable[] variables;

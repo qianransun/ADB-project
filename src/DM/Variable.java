@@ -1,10 +1,7 @@
 package DM;
 
-import TM.Instruction;
-import java.util.ArrayDeque;
 import java.util.Set;
 import java.util.HashSet;
-import java.util.Queue;
 
 public class Variable {
   private int index;

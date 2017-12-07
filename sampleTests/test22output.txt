@@ -1,0 +1,2 @@
+test22.txt:
+Each write instruction is reflected in the database. By dump(xi), the result is printed out.
