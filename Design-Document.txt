@@ -2,90 +2,189 @@ Design Document
 
 Tian Zhao N15974307, Qianran Sun N13240100
 
+Git UIL: https://github.com/qianransun/ADB-project
 
-We have two packages in all.
+Tian Zhao is in charge of functions in package TM mostly, and Qianran Sun is in charge of functions in package DM mostly. We work together for the logic and structure building.
+
+We have two packages TM(transaction manager) and DM(data manager).
 
 (I) Package DM have 6 classes in all:
 
 1. Lock.java
-The class has 3 fields for lock status: READ, WRITE, NONE
+The class has 3 fields for lock status: READ, WRITE, NONE.
 
 2. Site.java
-For each site, it has an array to save the variables a site has.
-Also, it contains the site status.
+The structure of a site, and it has two fields including:
+Variable[] variables: An array to save the variables a site has.
+SiteStatus: It contains the site status.
 
 3. SiteStatus.java
-Has three fields to show the site status: FAIL, RECOVER, UP
+Has three fields to show the site status: FAIL, RECOVER, UP.
 
-4. SiteEngine.java
-Manage all sites and those variables on each site.
-There are 8 functions inside.
-1) getWriteLock()
+4. SiteFactory.java
+Has one function: constructSites() which used to create all sites and put corresponding variables into each site.
 
-2) setWriteLock()
+5. SiteEngine.java
+Manage all sites and those variables on each site. There are 8 functions inside.
+Have the sites list from the siteFactory and the waitlist<list<list>> for all instructions that are waiting for locks.
 
-3) getReadLock()
+1) getWriteLock(Instruction instruction)
+Try to get the required write locks. If can, set write locks to all sites containing the resource; else, the instruction is put into the wait list.
 
-4) dump()
+If the resource exists on several sites, we use the flag canLock to loop all sites that have the resource to make sure that if there is a noneFail site whose resource is locking, then we change the flag to False and add the instruction to the wait list.  
+
+Calls the helper function getWriteLockHelper(Instruction instruction, int siteIndex) which uses the lockTable to estimate whether the write lock could get or not.
+
+Calls the function setWriteLock(Instruction instruction) which is used to judge whether set locks to only one site or several sites. And calls function setWriteLockHelper(int variableIndex, int transactionIndex, int siteIndex) to change the lock status into WRITE for a site’s variable  and add transactions to the variable’s lock table.
+
+Calls the function addWaitList(Instruction instruction, int siteIndex) to add all instructions that can’t get locks now to the wait list.
+
+2) getReadLock(Instruction instruction)
+Try to get the required read locks. If can, set read locks to a site that contains the resource, and if there are many sites contain the resource, we choose UP site from the beginning by site index (site 1 will be chosen to set lock if site 1 is up) using the function findFirstUpSite(); else, the instruction is put into the wait list.
+
+Calls function getReadLockHelper() which uses the lockTable to estimate whether the read lock could get or not.
+
+Calls function setReadLock(Instruction instruction), which is used to judge the variable on which site should be locked and change the lock status for the variable into READ, and add transactions to the variable’s lock table.
+
+3) dump()
 Gives the committed values of all copies of all variables at all sites, sorted per site.
 
-5) dumpsite()
+4) dumpSite(int index)
 Gives the committed values of all copies of all variables at site i.
+@param: the index of the site
 
-6) dumpVar()
-Gives the committed values of all copies of variable xj at all
-sites.
+5) dumpVar(int index)
+Gives the committed values of all copies of variable xj at all sites.
+@param: the index of a variable
 
-7) setSiteFail()
+6) setSiteFail(int siteIndex)
+Set the status of a site into FAIL. Actually, we are setting the status of each variable on the site to fail. Accumulate all transactions that have acquired lock in that site and add them to the set transactionToAbort. Erase the lock table in that site.
+@param: index of the site.
+@return: list of transaction index.
 
-8) setSiteRecover()
+7) setSiteRecover(int siteIndex)
+Set the status of the site into RECOVER. And the recover site still accepts no read operations until a committed write operation.
+@param: index of the site.    
+If the resource index is odd, it can accept R and W instructions so that we set the only site containing the resource to UP directly.
 
-5. SiteFactory.java
-Has a function: constructSites() which used to create all sites.
+If the resource index is even, it should wait for a W instruction, so we set those sites containing the resource to RECOVER.
+
+Deque the variable’s waitlist that have get locks and add all instructions that have acquired their locks from dequeWaitList to acquiredLocks. 
+
+8) releaseLock(int variableIndex, int transactionIndex)
+Release all locks of variable xi held by transaction Ti. 
+
+Calls lockReleaseHelper(int variableIndex, int transactionIndex, int siteIndex) to change the status of a variable’s lock to NONE and clear the lock Table.
+
+If it is a read lock, cause there maybe enjoyed by several transactions. So, we set the lock to NONE only on condition that the lock table is empty.
+
+9) dequeWaitList(int variableIndex)
+@param index of variable
+@return the list of instructions that have acquired their lock
+For each released variable(end or abort), we try to deque its’ waitlist if there exists one.
+Then, we estimate whether the instruction is W or R. 
+
+If it is W, we call getWriteLockHelper(instruction, siteIndex) to judge whether the write lock could be get, and if could, if the resource only exists on one site, then we call function setWriteLock(instruction), then add the instruction to the acquiredLocks and finally remove the instruction from the wait list.
+
+If it is R, we call getReadLockHelper(instruction, siteIndex)  and setReadLock(instruction) to estimate whether the read lock could get and set the possible lock.
 
 6. Variable.java
-Has 5 fields to show the variable information.
-index, value, lock, lockTable, waitList
+The structure of a variable, it has 5 fields including:
+index, value, lockStatus, lockTable, siteStatus 
+lockTable means the lock information a resource holds.
+siteStatus means the variable could know the status of the site it exists.
 
 
-(II) Package TM have 5 classes in all:
+(II) Package TM have 6 classes in all:
 
 1. ConstantValue.java
 Contains two constant value siteNumber 10 and variableNumber 20.
 
 2. Engine.java
-Manage all transactions and has 10 functions
+Manage all transactions.
 1) main()
+Main function is the access of the whole project and isused to call the run() function and printOut() function.
 
-2) run()
+2) printOut() 
+Function used to print the information in the instructionList for the following format.
+“x + instruction.variableIndex + “’s value is “ + instruction.value”
 
-3) canCommit()
+3) run()
+Run instructions by type and under each type, doing corresponding actions.
 
-4) cycleDetection()
+Case W: Call siteEngine.getWriteLock() to check whether could get the write lock.
+If could, then put the new value into a changeList (not change the value immediately). 
+If can’t, then put change the transaction’s status to waiting and call cycleDetect() to detect the cycle.
 
-5) failSiteAbort()
+Case R: Firstly, check whether the transaction is read-only or not, if it’s read-only, then no lock needed, just run all instructions at the time when the first read instruction appears.
 
-6) readFile()
+If the transaction is read-write, call siteEngine.getReadLock() to check whether could get the read lock, and do the same calls as the write lock mentioned above.
 
-7) parseInstructions()
+For both Case R and W, we do nothing for those aborted transactions.
 
-8) nextDigit()
+Case Dump: There are three conditions.
+If the resource index is not 0, then call dumpVar(index).
+If the site index is not equal to 0, then call dumpSite(index).
+If both the resource index and the site index are 0, then call dump().
 
-9) isDigit()
+Case Fail:  Get those transacationsToAbort and set the site to FAIL by calling the function siteEngine.setSiteFail(instruction.value). Then we print out the transactions is aborted sue to the site fail.
 
-10) parseIndex()
+Case Recover: Set the site to RECOVER by calling the function siteEngine.setSiteRecover(instruction.value) and calls removeTransactionWaiting().
+
+Case End:
+If the transaction’s instructions are all not in the waiting list, then the transaction can commit. 
+
+And till this time, we change the new write value for the resource into database by calling function writeVariables(Transaction transaction), which uses the map structure to write the temp value in the changeList into the database.
+
+Then we should release those locks hold by that transaction by calling releaseLocks(int transaction).
+
+If not, the transaction should be aborted by calling abortTransaction(int transaction).
+
+
+4) releaseLocks(): release resources a transaction has. If the transaction’s lock table is not equal to NONE, we call the function removeTransactionWaiting() and set the transaction’s lockTable to null.
+
+5) removeTransactionWaiting(): For those transaction who hasn’t committed but should END, just remove them from the wait list.
+
+6) setVariableValue(): For the R and W instructions, set the value in the instruction for a while.
+
+7) cycleDetect(): We make a graph and call the function DFS() to check if transactions are deadlocked. If there exists a cycle, then kill the youngest transaction in the cycle by calling getYongestTransaction(), release its resources and try to allocate its variables to other instructions. 
+
+8) getYongestTransaction(): get the youngest transaction in a cycle. We just use the transaction’s index in the transaction list because we add those transactions by sequence as the instructions show.
+
+9) abortTransaciton(): abort the transaction and remove it from the transactionWaitList
+
+10) DFS(boolean[] marked, int[] edgeTo, boolean[] onStack, int transactionIndex, List<Integer> cycle): the function which is used traverse the graph and detect the cycle. Transactions is stored in the list named cycle.
+@param: marked whether the transaction has been visited.
+@param edgeTo record the father node of the transaction.
+@param onStack whether the transaction is in the cycle.
+@param transactionIndex the index of the transaction.
+@param cycle used to store the cycle of transaction.
+
+11) initial(): used to initial functions including readFile(inputFile), parseInstructions() which is used to parse those instructions and add them to transaction list and also use the Collections.sort() to sort transactions by transaction index which is corresponding to the age of each transaction.
+ 
+12) readFile(): read file by line and distinguish each instruction by keyword.
+
 
 3. Instruction.java
-Show instructions per line which contains four fields.
-variableIndex, transactionIndex, value, result
+Structure of instructions and contains four fields.
+Instruction type, variableIndex, transactionIndex, value.
+For value is used as the site index in dump(value) and target value in W(T2, x1, value)
+
+Also, override the function toString() in order to make the format more friendly to print out and make our test easier.
 
 4. InstructionType.java
 Has 9 fields to show a transaction’s type.
 BEGIN, BEGINRO, FAIL, RECOVER, DUMP, END, R, W, DEFEAULT
 
 5. Transaction.java
-Has four fields toward for the type and lock of a transaction.
-list of instructions, index, isRO, lockTable
+Has six fields toward for the type and lock of a transaction.
+list of instructions, index, isRO, lockTable, waiting, changeList, transactionStatus
+Waiting means the transaction is waiting for one of its’ instruction.
+changeList is used for a write instruction and save the value for temp.
+
+6. TransactionStatus.java
+Has three fields toward for a transaction’s status.
+RUN, ABORTED, COMMITTED 
 
 
 
@@ -99,69 +198,4 @@ list of instructions, index, isRO, lockTable
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-1. Engine (TM)
-Fields:
-
-Functions:
-run(): including the run of each operations, and do all operations of RO firstly.
-dump():
-detectCycle(): 
-
-
-2. Transactions 
-There are two subclasses including Read-Only and Read-Write transactions.
-Fields:
-index, type(Read-Only or not), operations, status, locks
-
-Functions:
-
-
-2. Operations
-Fields:
-a list of operaitons, type(begin() beginRO,R,W,dump(),end(),fail(),recover()) 
-
-
-3. Resource
-Fields:
-index, sites, wait list of transactions,
-
-
-4. Site (DM)
-Fields: 
-index, resource, status
-
-Functions:
-recover(): Recover Site and Change the value of the resource in the site, we change the value of the new write till the commit moment, and save the new value to a temp.
-dump(i):
-
-
-5. ReadFile
-read and pass each operations in the file
-
-
-6. Main
-    execute each function by sequence.
 
