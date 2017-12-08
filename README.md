@@ -5,6 +5,11 @@ This repo is for RepCRec project in the class of Advanced Database
 Test1 to Test19 are the tests provided by teacher.
 We add 12 test cases more from Test20 to Test26.
 
+## Input:
+We use the input file which contains the test case as args[0].
+Also, we suppose that the index of transaction is set by system automatically,
+so that we don't support the case: there are only three transactions which contains T1, T2, T5. (suppose to be T3).
+
 ## Output:
 During the run, the project is going to pay close attention to cycle and print out the abortion of
 transaction once it encounters a cycle.
