@@ -351,4 +351,15 @@ public class SiteEngine {
       findFirstUpSite(variableIndex);
     return sites[siteIndex].variables[variableIndex].value;
   }
+
+  /**
+   * Used by RO transaction to check if the site is up.
+   * @param instruction the instruction to process.
+   * @return if there exists a site up.
+   */
+  public boolean checkSiteStatus(Instruction instruction) {
+    int siteIndex = instruction.variableIndex % 2 != 0 ? 1 + (instruction.variableIndex % 10) :
+        findFirstUpSite(instruction.variableIndex);
+    return sites[siteIndex].variables[instruction.variableIndex].status != SiteStatus.FAIL;
+  }
 }

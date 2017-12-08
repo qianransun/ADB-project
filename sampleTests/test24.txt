@@ -1,0 +1,5 @@
+beginRO(T1)
+fail(4)
+R(T1, x3)
+end(T1)
+recover(4)

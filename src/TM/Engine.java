@@ -60,6 +60,18 @@ public class Engine {
     for (Instruction instruction : instructionList) {
       Transaction transaction;
       switch (instruction.type) {
+        case BEGINRO:
+          transaction = transactionList.get(instruction.transactionIndex - 1);
+          for (Instruction ins : transaction.instructionList) {
+            if (ins.type != InstructionType.END) {
+              if (siteEngine.checkSiteStatus(ins)) {
+                ins.value = siteEngine.getVariableValue(ins.variableIndex);
+              } else {
+                transaction.waiting = ins;
+              }
+            }
+          }
+          break;
         case W:
           transaction = transactionList.get(instruction.transactionIndex - 1);
           if (transaction.status != TransactionStatus.ABORTED) {
@@ -75,15 +87,7 @@ public class Engine {
         case R:
           transaction = transactionList.get(instruction.transactionIndex - 1);
           if (transaction.status != TransactionStatus.ABORTED) {
-            if (transaction.isRO) {
-              if (instruction == transaction.instructionList.get(0)) {
-                for (Instruction ins : transaction.instructionList) {
-                  if (ins.type != InstructionType.END) {
-                    ins.value = siteEngine.getVariableValue(ins.variableIndex);
-                  }
-                }
-              }
-            } else {
+            if (!transaction.isRO) {
               if (siteEngine.getReadLock(instruction)) {
                 if (transaction.lockTable[instruction.variableIndex] != Lock.WRITE) {
                   transaction.lockTable[instruction.variableIndex] = Lock.READ;
@@ -115,6 +119,7 @@ public class Engine {
           break;
         case RECOVER:
           removeTransactionWaiting(siteEngine.setSiteRecover(instruction.value));
+          removeROTransactionWaiting();
           break;
         case END:
           transaction = transactionList.get(instruction.transactionIndex - 1);
@@ -348,6 +353,18 @@ public class Engine {
       pos[0]++;
     }
     return index;
+  }
+
+  private void removeROTransactionWaiting() {
+    for (Transaction transaction : transactionList) {
+      if (transaction.isRO) {
+        if (transaction.waiting != null && siteEngine.checkSiteStatus(transaction.waiting)) {
+          transaction.waiting.value = siteEngine.
+              getVariableValue(transaction.waiting.variableIndex);
+          transaction.waiting = null;
+        }
+      }
+    }
   }
 }
 
