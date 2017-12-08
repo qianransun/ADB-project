@@ -66,6 +66,7 @@ public class Engine {
             if (ins.type != InstructionType.END) {
               if (siteEngine.checkSiteStatus(ins)) {
                 ins.value = siteEngine.getVariableValue(ins.variableIndex);
+                printReadResult(ins);
               } else {
                 transaction.waiting = ins;
               }
@@ -93,6 +94,7 @@ public class Engine {
                   transaction.lockTable[instruction.variableIndex] = Lock.READ;
                 }
                 setVariableValue(instruction);
+                printReadResult(instruction);
               } else {
                 transaction.waiting = instruction;
                 cycleDetect(instruction.transactionIndex);
@@ -137,6 +139,11 @@ public class Engine {
     }
   }
 
+  private void printReadResult(Instruction instruction) {
+    System.out.println(instruction);
+    System.out.println("x" + instruction.variableIndex + "'s value is " + instruction.value);
+  }
+
   private void setVariableValue(Instruction instruction) {
     Integer value = transactionList.get(instruction.transactionIndex - 1).changeList.
         get(instruction.variableIndex);
@@ -167,6 +174,7 @@ public class Engine {
     for (Instruction instruction : acquiredLocks) {
       if (instruction.type == InstructionType.R) {
         setVariableValue(instruction);
+        printReadResult(instruction);
       }
       transactionList.get(instruction.transactionIndex - 1).removeWaiting();
     }
