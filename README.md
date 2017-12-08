@@ -3,7 +3,7 @@ This repo is for RepCRec project in the class of Advanced Database
 
 ## For test files:
 Test1 to Test19 are the tests provided by teacher.
-Test20 to Test22 are the tests created by ourselves.
+Test20 to Test24 are the tests created by ourselves.
 
 ## Output:
 During the run, the project is going to pay close attention to cycle and print out the abortion of

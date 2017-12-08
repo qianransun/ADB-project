@@ -1,0 +1,13 @@
+test24.txt:
+The read-only transaction T1 is executed when it begins, which is beginRO(T1). Thus, the failure of
+site 4 does not affect T1.
+
+test24a.txt:
+Read-only transaction T1 tries to read variable x3 from site 4. However, site 4 fails before the
+begin of T1. In this case, the read instruction R(T1, x3) is recorded in wait list and it is
+waiting for the site 4 to recover.
+
+test24b.txt:
+This test shows that only committed values before read-only transaction can affect RO transactions'
+read. The read instruction of RO transaction T1 still gets the previous value 30 of variable x3.
+Afterwards, when T2 commits, x3's value is changed to 1.
